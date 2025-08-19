@@ -13,7 +13,6 @@ import pty
 class InstallWorker(QThread):
     progress_updated = Signal(str)
     finished = Signal(bool, str)
-
     def __init__(self, disk, image, rootfs_size, esp_size, etc_size, var_size, dual_boot):
         super().__init__()
         self.disk = disk
@@ -24,7 +23,9 @@ class InstallWorker(QThread):
         self.var_size = var_size
         self.dual_boot = dual_boot
         self.process = None
-        self.master_fd = None # New: master file descriptor for pty
+        self.master_fd = None
+        self.installation_succeeded_by_output = False
+        self.installation_failed_by_output = False
 
     def run(self):
         try:
@@ -42,40 +43,36 @@ class InstallWorker(QThread):
                 cmd.append('--dual-boot')
 
             self.progress_updated.emit("Starting installation...")
-
-            # Create a pseudo-terminal
             master_fd, slave_fd = pty.openpty()
             self.master_fd = master_fd
-
-            # Start the subprocess with the slave pty
             self.process = subprocess.Popen(
                 cmd,
                 stdin=slave_fd,
                 stdout=slave_fd,
                 stderr=slave_fd,
-                preexec_fn=os.setsid, # Detach from controlling terminal
-                text=False, # We will handle decoding ourselves
+                preexec_fn=os.setsid,
+                text=False,
                 bufsize=0
             )
-            os.close(slave_fd) # Close the slave fd in the parent process
-
-            # Read from the master pty
+            os.close(slave_fd)
             import select
             while True:
                 if self.process.poll() is not None:
-                    # Process has terminated, read any remaining output
                     try:
                         remaining_output = os.read(self.master_fd, 4096).decode(errors='ignore')
                         if remaining_output:
                             for line in remaining_output.splitlines():
                                 if line.strip():
                                     self.progress_updated.emit(line)
-                    except OSError: # master_fd might be closed already
+                                    if "Installation complete!" in line:
+                                        self.installation_succeeded_by_output = True
+                                    elif "Error:" in line or "failed" in line.lower():
+                                        self.installation_failed_by_output = True
+                    except OSError:
                         pass
                     break
 
                 ready, _, _ = select.select([self.master_fd], [], [], 0.1)
-
                 if ready:
                     try:
                         output = os.read(self.master_fd, 1024).decode(errors='ignore')
@@ -83,22 +80,32 @@ class InstallWorker(QThread):
                             for line in output.splitlines():
                                 if line.strip():
                                     self.progress_updated.emit(line)
-                    except OSError: # master_fd might be closed
+                                    if "Installation complete!" in line:
+                                        self.installation_succeeded_by_output = True
+                                    elif "Error:" in line or "failed" in line.lower():
+                                        self.installation_failed_by_output = True
+                    except OSError:
                         break
-
-            # Close the master pty
             os.close(self.master_fd)
             self.master_fd = None
-
-            return_code = self.process.returncode
-
-            if return_code == 0:
+            if self.installation_succeeded_by_output:
                 self.progress_updated.emit("Installation completed successfully!")
                 self.finished.emit(True, "Installation completed successfully")
+            elif self.installation_failed_by_output:
+                self.finished.emit(False, "Installation failed based on output messages.")
             else:
-                error_msg = f"Installation failed with return code {return_code}"
-                self.progress_updated.emit(error_msg)
-                self.finished.emit(False, error_msg)
+                return_code = self.process.returncode
+                if return_code == 0:
+                    self.progress_updated.emit("Installation completed successfully!")
+                    self.finished.emit(True, "Installation completed successfully")
+                elif return_code is not None:
+                    error_msg = f"Installation failed with return code {return_code}"
+                    self.progress_updated.emit(error_msg)
+                    self.finished.emit(False, error_msg)
+                else:
+                    error_msg = "Installation status uncertain: Process terminated without clear exit code or output message."
+                    self.progress_updated.emit(error_msg)
+                    self.finished.emit(False, error_msg)
 
         except FileNotFoundError:
             error_msg = "Error: 'obsidianctl' command not found. Please ensure ObsidianOS tools are installed."
@@ -492,8 +499,7 @@ class InstallationPage(QWidget):
 
     def update_progress(self, message):
         self.status_label.setText("Installation in progress...")
-        self.log_text.append(f"[{time.strftime('%H:%M:%S')}] {message}")
-
+        self.log_text.append(message)
         cursor = self.log_text.textCursor()
         cursor.movePosition(QTextCursor.End)
         self.log_text.setTextCursor(cursor)
@@ -650,6 +656,11 @@ class ObsidianOSInstaller(QMainWindow):
             self.next_button.setText("Finish")
             self.install_button.hide()
             self.back_button.setEnabled(False)
+            try:
+                self.next_button.clicked.disconnect(self.go_next)
+            except TypeError:
+                pass
+            self.next_button.clicked.connect(self.close)
         else:
             self.next_button.show()
             self.install_button.hide()
@@ -680,7 +691,7 @@ class ObsidianOSInstaller(QMainWindow):
         installation_page = self.pages[6]
 
         installation_page.install_worker = None
-        installation_page.installation_finished_signal = self.installation_finished
+        installation_page.installation_complete_callback = self.installation_finished
 
         installation_page.start_installation(
             disk_page.get_selected_disk(),
