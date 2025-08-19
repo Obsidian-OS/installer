@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Install ObsidianOS
+Exec=/usr/bin/installer.py
+Icon=/usr/bin/logo.png
+Terminal=false
+Categories=System;Utility;
