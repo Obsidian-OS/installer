@@ -1,6 +1,6 @@
 # ObsidianOS Installer
 
-This repository contains the graphical installer for ObsidianOS, an A/B GNU/Linux distribution based on Arch. This installer is built using PySide6 and provides a user-friendly interface to guide you through the installation process. Comes with ObsidianOS KDE.
+This repository contains the graphical installer for ObsidianOS, an A/B GNU/Linux distribution based on Arch. This installer is built using PySide6 and provides a user-friendly interface to guide you through the installation process. Comes with [ObsidianOS KDE](https://github.com/Obsidian-OS/archiso-plasma) and [ObsidianOS COSMIC](https://github.com/Obsidian-OS/archiso-cosmic).
 
 ## Features
 
