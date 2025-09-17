@@ -3,6 +3,6 @@
 Type=Application
 Name=Install ObsidianOS
 Exec=/usr/bin/installer.py
-Icon=/usr/bin/logo.png
+Icon=/usr/share/icons/obsidianos-installer.svg
 Terminal=false
 Categories=System;Utility;
