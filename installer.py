@@ -159,7 +159,7 @@ class WelcomePage(QWidget):
         description.setAlignment(Qt.AlignCenter)
         description.setWordWrap(True)
         logo_label = QLabel()
-        pixmap = QPixmap(os.path.join(script_dir, "logo.svg"))
+        pixmap = QPixmap(os.path.join("/usr/share/pixmaps", "obsidianos.png"))
         if not pixmap.isNull():
             max_logo_width = 200
             scaled_pixmap = pixmap.scaled(max_logo_width, pixmap.height(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
@@ -530,7 +530,7 @@ class ObsidianOSInstaller(QMainWindow):
     def init_ui(self):
         self.setWindowTitle("ObsidianOS Installer")
         self.setFixedSize(800, 600)
-        app_icon = QPixmap(os.path.join(script_dir, "logo.svg"))
+        app_icon = QPixmap(os.path.join("/usr/share/pixmaps", "obsidianos.png"))
         if not app_icon.isNull():
             self.setWindowIcon(QIcon(app_icon))
 
