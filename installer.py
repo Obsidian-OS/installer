@@ -6,7 +6,7 @@ import time
 import re
 from pathlib import Path
 script_dir = os.path.dirname(os.path.abspath(__file__))
-from PySide6.QtWidgets import (QApplication, QMainWindow, QStackedWidget, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QLabel, QListWidget, QRadioButton, QButtonGroup, QProgressBar, QTextEdit, QFrame, QSpacerItem, QSizePolicy, QListWidgetItem, QSpinBox, QFormLayout, QGroupBox, QMessageBox, QComboBox, QStyle, QDialog)
+from PySide6.QtWidgets import (QApplication, QMainWindow, QStackedWidget, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QLabel, QListWidget, QRadioButton, QButtonGroup, QProgressBar, QTextEdit, QFrame, QSpacerItem, QSizePolicy, QListWidgetItem, QSpinBox, QFormLayout, QGroupBox, QMessageBox, QComboBox, QStyle, QDialog, QLineEdit)
 from PySide6.QtCore import Qt, QThread, QTimer, Signal, QProcess
 from PySide6.QtGui import QFont, QPalette, QPixmap, QIcon, QTextCursor
 import pty
@@ -16,7 +16,8 @@ test_mode = "--test" in sys.argv
 class InstallWorker(QThread):
     progress_updated = Signal(str)
     finished = Signal(bool, str)
-    def __init__(self, disk, image, rootfs_size, esp_size, etc_size, var_size, dual_boot, filesystem_type):
+    chroot_entered = Signal()
+    def __init__(self, disk, image, rootfs_size, esp_size, etc_size, var_size, dual_boot, filesystem_type, locale, timezone, keyboard):
         super().__init__()
         self.disk = disk
         self.image = image
@@ -26,10 +27,14 @@ class InstallWorker(QThread):
         self.var_size = var_size
         self.dual_boot = dual_boot
         self.filesystem_type = filesystem_type
+        self.locale = locale
+        self.timezone = timezone
+        self.keyboard = keyboard
         self.process = None
         self.master_fd = None
         self.installation_succeeded_by_output = False
         self.installation_failed_by_output = False
+        self.in_chroot = False
 
     def run(self):
         try:
@@ -155,6 +160,16 @@ class InstallWorker(QThread):
                 os.write(self.master_fd, (text + '\n').encode())
             except OSError:
                 pass
+
+    def send_configs(self):
+        commands = [
+            f"locale-gen {self.locale}",
+            f"localectl set-locale LANG={self.locale}",
+            f"timedatectl set-timezone {self.timezone}",
+            f"localectl set-keymap {self.keyboard}"
+        ]
+        for cmd in commands:
+            self.send_input(cmd)
 
 
 class WelcomePage(QWidget):
@@ -390,6 +405,138 @@ class SystemImagePage(QWidget):
     def get_selected_image(self):
         return self.selected_image
 
+class LocalePage(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.selected_locale = "en_US.UTF-8"
+        self.init_ui()
+
+    def init_ui(self):
+        layout = QVBoxLayout()
+        title = QLabel("Select Locale")
+        title.setObjectName("page-title")
+        self.search_edit = QLineEdit()
+        self.search_edit.setPlaceholderText("Search locales...")
+        self.search_edit.textChanged.connect(self.filter_locales)
+        self.locale_list = QListWidget()
+        self.locale_list.itemClicked.connect(self.on_locale_selected)
+        try:
+            result = subprocess.run(['ls', '/usr/share/locale'], capture_output=True, text=True)
+            locales = result.stdout.strip().split('\n')
+        except:
+            locales = ["en_US.UTF-8"]
+        for loc in locales:
+            if loc.strip():
+                item = QListWidgetItem(loc)
+                item.setIcon(QIcon.fromTheme("preferences-desktop-locale"))
+                self.locale_list.addItem(item)
+        if self.locale_list.count() > 0:
+            self.locale_list.setCurrentRow(0)
+        layout.addWidget(title)
+        layout.addWidget(self.search_edit)
+        layout.addWidget(self.locale_list)
+        self.setLayout(layout)
+
+    def filter_locales(self):
+        text = self.search_edit.text().lower()
+        for i in range(self.locale_list.count()):
+            item = self.locale_list.item(i)
+            item.setHidden(text not in item.text().lower())
+
+    def on_locale_selected(self, item):
+        self.selected_locale = item.text()
+
+    def get_selected_locale(self):
+        return self.selected_locale
+
+class TimezonePage(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.selected_timezone = "UTC"
+        self.init_ui()
+
+    def init_ui(self):
+        layout = QVBoxLayout()
+        title = QLabel("Select Timezone")
+        title.setObjectName("page-title")
+        self.search_edit = QLineEdit()
+        self.search_edit.setPlaceholderText("Search timezones...")
+        self.search_edit.textChanged.connect(self.filter_timezones)
+        self.tz_list = QListWidget()
+        self.tz_list.itemClicked.connect(self.on_tz_selected)
+        try:
+            result = subprocess.run(['timedatectl', 'list-timezones'], capture_output=True, text=True)
+            timezones = result.stdout.strip().split('\n')
+        except:
+            timezones = ["UTC"]
+        for tz in timezones:
+            if tz.strip():
+                item = QListWidgetItem(tz)
+                item.setIcon(QIcon.fromTheme("preferences-system-time"))
+                self.tz_list.addItem(item)
+        if self.tz_list.count() > 0:
+            self.tz_list.setCurrentRow(0)
+        layout.addWidget(title)
+        layout.addWidget(self.search_edit)
+        layout.addWidget(self.tz_list)
+        self.setLayout(layout)
+
+    def filter_timezones(self):
+        text = self.search_edit.text().lower()
+        for i in range(self.tz_list.count()):
+            item = self.tz_list.item(i)
+            item.setHidden(text not in item.text().lower())
+
+    def on_tz_selected(self, tz):
+        self.selected_timezone = tz.text()
+
+    def get_selected_timezone(self):
+        return self.selected_timezone
+
+class KeyboardPage(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.selected_keyboard = "us"
+        self.init_ui()
+
+    def init_ui(self):
+        layout = QVBoxLayout()
+        title = QLabel("Select Keyboard Layout")
+        title.setObjectName("page-title")
+        self.search_edit = QLineEdit()
+        self.search_edit.setPlaceholderText("Search keyboard layouts...")
+        self.search_edit.textChanged.connect(self.filter_keyboards)
+        self.kb_list = QListWidget()
+        self.kb_list.itemClicked.connect(self.on_kb_selected)
+        try:
+            result = subprocess.run(['localectl', 'list-keymaps'], capture_output=True, text=True)
+            keyboards = result.stdout.strip().split('\n')
+        except:
+            keyboards = ["us", "ar", "ru"]
+        for kb in keyboards:
+            if kb.strip():
+                item = QListWidgetItem(kb)
+                item.setIcon(QIcon.fromTheme("input-keyboard"))
+                self.kb_list.addItem(item)
+        if self.kb_list.count() > 0:
+            self.kb_list.setCurrentRow(0)
+        layout.addWidget(title)
+        layout.addWidget(self.search_edit)
+        layout.addWidget(self.kb_list)
+        self.setLayout(layout)
+
+    def filter_keyboards(self):
+        text = self.search_edit.text().lower()
+        for i in range(self.kb_list.count()):
+            item = self.kb_list.item(i)
+            item.setHidden(text not in item.text().lower())
+
+    def on_kb_selected(self, item):
+        self.selected_keyboard = item.text()
+
+    def get_selected_keyboard(self):
+        return self.selected_keyboard
+
 class SummaryPage(QWidget):
     def __init__(self):
         super().__init__()
@@ -411,10 +558,13 @@ class SummaryPage(QWidget):
         layout.addStretch()
         self.setLayout(layout)
 
-    def update_summary(self, disk, boot_option, partition_config, image):
+    def update_summary(self, disk, boot_option, partition_config, image, locale, timezone, keyboard):
         summary = f"""<b>Installation Target:</b> {disk or 'Not selected'}<br><br>
 <b>Boot Configuration:</b> {boot_option.replace('_', ' ').title()}<br><br>
 <b>System Image:</b> {image or 'Default'}<br><br>
+<b>Locale:</b> {locale}<br><br>
+<b>Timezone:</b> {timezone}<br><br>
+<b>Keyboard Layout:</b> {keyboard}<br><br>
 <b>Partition Configuration:</b><br>
 • ESP: {partition_config['esp_size']}<br>
 • Root filesystem: {partition_config['rootfs_size']} (A/B)<br>
@@ -427,6 +577,10 @@ class InstallationPage(QWidget):
     def __init__(self):
         super().__init__()
         self.install_worker = None
+        self.chroot_config_pending = False
+        self.selected_locale = None
+        self.selected_timezone = None
+        self.selected_keyboard = None
         self.init_ui()
 
     def init_ui(self):
@@ -493,9 +647,12 @@ class InstallationPage(QWidget):
             self.is_y_n_prompt_active = False
             self.input_field.clear()
 
-    def start_installation(self, disk, image, partition_config, dual_boot, filesystem_type):
+    def start_installation(self, disk, image, partition_config, dual_boot, filesystem_type, locale, timezone, keyboard):
         self.status_label.setText("Starting installation...")
         self.log_text.clear()
+        self.selected_locale = locale
+        self.selected_timezone = timezone
+        self.selected_keyboard = keyboard
         self.install_worker = InstallWorker(
             disk, image,
             partition_config['rootfs_size'],
@@ -503,16 +660,30 @@ class InstallationPage(QWidget):
             partition_config['etc_ab_size'],
             partition_config['var_ab_size'],
             dual_boot,
-            filesystem_type
+            filesystem_type,
+            locale, timezone, keyboard
         )
 
         self.install_worker.progress_updated.connect(self.update_progress)
         self.install_worker.finished.connect(self.installation_finished)
+        self.install_worker.chroot_entered.connect(self.on_chroot_entered)
         self.install_worker.start()
+
+    def on_chroot_entered(self):
+        reply = QMessageBox.question(self, "Chroot",
+                                   "You are now in chroot. Do you still want to be in chroot?",
+                                   QMessageBox.Yes | QMessageBox.No,
+                                   QMessageBox.Yes)
+        if reply == QMessageBox.No:
+            self.install_worker.send_input('exit')
 
     def update_progress(self, message):
         self.status_label.setText("Installation in progress...")
-        if re.match(r".*\([yY]/[nN]\):\s*$", message):
+        if "Do you want to chroot into slot 'a' to make changes before copying it to slot B? (y/N):" in message:
+            self.install_worker.send_input('y')
+            self.install_worker.send_configs()
+            self.install_worker.chroot_entered.emit()
+        elif re.match(r".*\([yY]/[nN]\):\s*$", message):
             match = re.match(r"(.*)\([yY]/[nN]\):\s*$", message)
             if match:
                 question = match.group(1).strip()
@@ -622,6 +793,9 @@ class ObsidianOSInstaller(QMainWindow):
             DualBootPage(),
             AdvancedOptionsPage(),
             SystemImagePage(),
+            LocalePage(),
+            TimezonePage(),
+            KeyboardPage(),
             SummaryPage(),
             InstallationPage(),
             FinishedPage()
@@ -646,7 +820,7 @@ class ObsidianOSInstaller(QMainWindow):
             self.current_page += 1
             self.stacked_widget.setCurrentIndex(self.current_page)
             self.update_buttons()
-            if self.current_page == 5:
+            if self.current_page == 8:
                 self.update_summary()
 
     def validate_current_page(self):
@@ -658,15 +832,15 @@ class ObsidianOSInstaller(QMainWindow):
         return True
 
     def update_buttons(self):
-        self.back_button.setEnabled(self.current_page > 0 and self.current_page < 6)
-        if self.current_page == 5:
+        self.back_button.setEnabled(self.current_page > 0 and self.current_page < 9)
+        if self.current_page == 8:
             self.next_button.hide()
             self.install_button.show()
-        elif self.current_page == 6:
+        elif self.current_page == 9:
             self.next_button.hide()
             self.install_button.hide()
             self.back_button.setEnabled(False)
-        elif self.current_page >= 7:
+        elif self.current_page >= 10:
             self.next_button.show()
             self.next_button.setText("Finish")
             self.install_button.hide()
@@ -686,16 +860,22 @@ class ObsidianOSInstaller(QMainWindow):
         boot_page = self.pages[2]
         advanced_page = self.pages[3]
         image_page = self.pages[4]
-        summary_page = self.pages[5]
+        locale_page = self.pages[5]
+        tz_page = self.pages[6]
+        kb_page = self.pages[7]
+        summary_page = self.pages[8]
         summary_page.update_summary(
             disk_page.get_selected_disk(),
             boot_page.get_selected_option(),
             advanced_page.get_partition_config(),
-            image_page.get_selected_image()
+            image_page.get_selected_image(),
+            locale_page.get_selected_locale(),
+            tz_page.get_selected_timezone(),
+            kb_page.get_selected_keyboard()
         )
 
     def start_installation(self):
-        self.current_page = 6
+        self.current_page = 9
         self.stacked_widget.setCurrentIndex(self.current_page)
         self.update_buttons()
         boot_page = self.pages[2]
@@ -703,7 +883,10 @@ class ObsidianOSInstaller(QMainWindow):
         disk_page = self.pages[1]
         advanced_page = self.pages[3]
         image_page = self.pages[4]
-        installation_page = self.pages[6]
+        locale_page = self.pages[5]
+        tz_page = self.pages[6]
+        kb_page = self.pages[7]
+        installation_page = self.pages[9]
         installation_page.install_worker = None
         installation_page.installation_complete_callback = self.installation_finished
         installation_page.start_installation(
@@ -711,15 +894,18 @@ class ObsidianOSInstaller(QMainWindow):
             image_page.get_selected_image(),
             advanced_page.get_partition_config(),
             dual_boot_status,
-            advanced_page.get_filesystem_type()
+            advanced_page.get_filesystem_type(),
+            locale_page.get_selected_locale(),
+            tz_page.get_selected_timezone(),
+            kb_page.get_selected_keyboard()
         )
 
     def installation_finished(self, success, message):
         if success:
-            self.current_page = 7
+            self.current_page = 10
             self.stacked_widget.setCurrentIndex(self.current_page)
             self.update_buttons()
-            finished_page = self.pages[7]
+            finished_page = self.pages[10]
             finished_page.restart_button.clicked.connect(self.restart_system)
             finished_page.show_log_button.clicked.connect(self.show_log)
         else:
@@ -737,7 +923,7 @@ class ObsidianOSInstaller(QMainWindow):
                 self.close()
 
     def show_log(self):
-        log_text = self.pages[6].log_text.toPlainText()
+        log_text = self.pages[9].log_text.toPlainText()
         dialog = QDialog(self)
         dialog.setWindowTitle("Installation Log")
         layout = QVBoxLayout(dialog)
