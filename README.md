@@ -3,7 +3,14 @@
 This repository contains the graphical installer for ObsidianOS, an A/B GNU/Linux distribution based on Arch. This installer is built using PySide6 and provides a user-friendly interface to guide you through the installation process. Comes with [ObsidianOS KDE](https://github.com/Obsidian-OS/archiso-plasma) and [ObsidianOS COSMIC](https://github.com/Obsidian-OS/archiso-cosmic).
 
 ## Screenshots
-*Wait for me to go in Github WebUI to add em lol*
+<img width="887" height="685" alt="Intro Page" src="https://github.com/user-attachments/assets/78db3e91-a271-4832-bb68-19c60d535e46" />
+<img width="887" height="685" alt="Disk Selection" src="https://github.com/user-attachments/assets/638bfa73-3053-44ce-8349-71338076cb25" />
+<img width="887" height="685" alt="System Image Selection" src="https://github.com/user-attachments/assets/a1578c35-ed3f-4365-b348-18c4e11c1850" />
+<img width="887" height="685" alt="Summary Page" src="https://github.com/user-attachments/assets/5a947148-0569-4e23-983c-961922dce0d2" />
+<img width="887" height="685" alt="Installation (test-mode)" src="https://github.com/user-attachments/assets/f83fa1b7-e497-44c2-9020-696283fd6ac3" />
+<img width="887" height="685" alt="Finished Page" src="https://github.com/user-attachments/assets/184ba7c4-5d75-4b70-862f-41ca35bd8604" />
+<img width="887" height="685" alt="Finished Page w/ logs dialog" src="https://github.com/user-attachments/assets/355b5ddb-7108-4fdd-a83c-66430a9a7174" />
+
 
 ## Features
 
