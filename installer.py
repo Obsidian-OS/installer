@@ -9,6 +9,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 from PySide6.QtWidgets import (QApplication, QMainWindow, QStackedWidget, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QLabel, QListWidget, QRadioButton, QButtonGroup, QProgressBar, QTextEdit, QFrame, QSpacerItem, QSizePolicy, QListWidgetItem, QSpinBox, QFormLayout, QGroupBox, QMessageBox, QComboBox, QStyle, QDialog, QLineEdit)
 from PySide6.QtCore import Qt, QThread, QTimer, Signal, QProcess
 from PySide6.QtGui import QFont, QPalette, QPixmap, QIcon, QTextCursor
+from PySide6.QtWidgets import QGraphicsDropShadowEffect
 import pty
 
 test_mode = "--test" in sys.argv
@@ -200,7 +201,6 @@ class WelcomePage(QWidget):
             logo_label.setPixmap(scaled_pixmap)
             logo_label.setAlignment(Qt.AlignCenter)
             layout.addWidget(logo_label)
-
         layout.addWidget(title)
         layout.addWidget(subtitle)
         layout.addWidget(description)
@@ -214,17 +214,37 @@ class DiskSelectionPage(QWidget):
         self.scan_disks()
 
     def init_ui(self):
-        layout = QVBoxLayout()
+        main_frame = QFrame()
+        main_frame.setFrameStyle(QFrame.NoFrame)
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(10)
+        shadow.setOffset(0, 3)
+        shadow.setColor(Qt.black)
+        main_frame.setGraphicsEffect(shadow)
+        layout = QVBoxLayout(main_frame)
+        layout.setSpacing(20)
+        layout.setContentsMargins(30, 30, 30, 30)
         title = QLabel("Select Installation Disk")
         title.setObjectName("page-title")
+        title.setAlignment(Qt.AlignCenter)
         self.disk_list = QListWidget()
         self.disk_list.itemClicked.connect(self.on_disk_selected)
+        self.disk_list.setObjectName("disk-list")
+        warning_frame = QFrame()
+        warning_layout = QHBoxLayout(warning_frame)
+        warning_layout.setContentsMargins(10, 10, 10, 10)
+        warning_icon = QLabel()
+        warning_icon.setPixmap(self.style().standardIcon(QStyle.SP_MessageBoxWarning).pixmap(24, 24))
         warning = QLabel("Warning: All data on the selected disk will be erased!")
         warning.setObjectName("warning-label")
+        warning_layout.addWidget(warning_icon)
+        warning_layout.addWidget(warning, 1)
         layout.addWidget(title)
         layout.addWidget(self.disk_list)
-        layout.addWidget(warning)
-        self.setLayout(layout)
+        layout.addWidget(warning_frame)
+        main_layout = QVBoxLayout(self)
+        main_layout.addWidget(main_frame)
+        self.setLayout(main_layout)
 
     def scan_disks(self):
         if test_mode:
@@ -275,22 +295,49 @@ class DualBootPage(QWidget):
         self.init_ui()
 
     def init_ui(self):
-        layout = QVBoxLayout()
+        main_frame = QFrame()
+        main_frame.setFrameStyle(QFrame.NoFrame)
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(12)
+        shadow.setOffset(0, 4)
+        shadow.setColor(Qt.black)
+        main_frame.setGraphicsEffect(shadow)
+        layout = QVBoxLayout(main_frame)
+        layout.setSpacing(25)
+        layout.setContentsMargins(30, 30, 30, 30)
         title = QLabel("Dual Boot Configuration")
         title.setObjectName("page-title")
+        title.setAlignment(Qt.AlignCenter)
+        description = QLabel("Choose how you want to install ObsidianOS:")
+        description.setAlignment(Qt.AlignCenter)
+        description.setWordWrap(True)
+        options_layout = QVBoxLayout()
+        options_layout.setSpacing(15)
         self.button_group = QButtonGroup()
+        erase_layout = QHBoxLayout()
+        erase_icon = QLabel()
+        erase_icon.setPixmap(self.style().standardIcon(QStyle.SP_MessageBoxCritical).pixmap(32, 32))
         self.erase_option = QRadioButton("Erase entire disk and install ObsidianOS")
         self.erase_option.setChecked(True)
-        self.alongside_option = QRadioButton("Install ObsidianOS alongside existing OS")
+        erase_layout.addWidget(erase_icon)
+        erase_layout.addWidget(self.erase_option, 1)
         self.button_group.addButton(self.erase_option)
+        alongside_layout = QHBoxLayout()
+        alongside_icon = QLabel()
+        alongside_icon.setPixmap(self.style().standardIcon(QStyle.SP_MessageBoxInformation).pixmap(32, 32))
+        self.alongside_option = QRadioButton("Install ObsidianOS alongside existing OS")
+        alongside_layout.addWidget(alongside_icon)
+        alongside_layout.addWidget(self.alongside_option, 1)
         self.button_group.addButton(self.alongside_option)
-        description = QLabel("Choose how you want to install ObsidianOS:")
+        options_layout.addLayout(erase_layout)
+        options_layout.addLayout(alongside_layout)
         layout.addWidget(title)
         layout.addWidget(description)
-        layout.addWidget(self.erase_option)
-        layout.addWidget(self.alongside_option)
+        layout.addLayout(options_layout)
         layout.addStretch()
-        self.setLayout(layout)
+        main_layout = QVBoxLayout(self)
+        main_layout.addWidget(main_frame)
+        self.setLayout(main_layout)
 
     def get_selected_option(self):
         if self.erase_option.isChecked():
@@ -306,13 +353,27 @@ class AdvancedOptionsPage(QWidget):
         self.init_ui()
 
     def init_ui(self):
-        layout = QVBoxLayout()
+        main_frame = QFrame()
+        main_frame.setFrameStyle(QFrame.NoFrame)
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(12)
+        shadow.setOffset(0, 4)
+        shadow.setColor(Qt.black)
+        main_frame.setGraphicsEffect(shadow)
+        layout = QVBoxLayout(main_frame)
+        layout.setSpacing(20)
+        layout.setContentsMargins(30, 30, 30, 30)
         title = QLabel("Advanced Options")
         title.setObjectName("page-title")
+        title.setAlignment(Qt.AlignCenter)
         description = QLabel("Configure partition sizes for your ObsidianOS installation:")
+        description.setAlignment(Qt.AlignCenter)
         description.setWordWrap(True)
         group_box = QGroupBox("Partition Configuration")
+        group_box.setObjectName("advanced-group")
         form_layout = QFormLayout()
+        form_layout.setVerticalSpacing(15)
+        form_layout.setHorizontalSpacing(10)
         self.rootfs_size = QSpinBox()
         self.rootfs_size.setRange(1, 9999)
         self.rootfs_size.setValue(6)
@@ -338,15 +399,24 @@ class AdvancedOptionsPage(QWidget):
         self.filesystem_type_combo.addItem("f2fs")
         form_layout.addRow("Filesystem Type:", self.filesystem_type_combo)
         group_box.setLayout(form_layout)
+        info_frame = QFrame()
+        info_layout = QHBoxLayout(info_frame)
+        info_layout.setContentsMargins(10, 10, 10, 10)
+        info_icon = QLabel()
+        info_icon.setPixmap(self.style().standardIcon(QStyle.SP_MessageBoxInformation).pixmap(24, 24))
         info_label = QLabel("The A/B system requires duplicate partitions for safe updates and rollback capabilities.")
         info_label.setWordWrap(True)
         info_label.setObjectName("info-label")
+        info_layout.addWidget(info_icon)
+        info_layout.addWidget(info_label, 1)
         layout.addWidget(title)
         layout.addWidget(description)
         layout.addWidget(group_box)
-        layout.addWidget(info_label)
+        layout.addWidget(info_frame)
         layout.addStretch()
-        self.setLayout(layout)
+        main_layout = QVBoxLayout(self)
+        main_layout.addWidget(main_frame)
+        self.setLayout(main_layout)
 
     def get_partition_config(self):
         return {
@@ -367,14 +437,27 @@ class SystemImagePage(QWidget):
         self.scan_images()
 
     def init_ui(self):
-        layout = QVBoxLayout()
+        main_frame = QFrame()
+        main_frame.setFrameStyle(QFrame.NoFrame)
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(10)
+        shadow.setOffset(0, 3)
+        shadow.setColor(Qt.black)
+        main_frame.setGraphicsEffect(shadow)
+        layout = QVBoxLayout(main_frame)
+        layout.setSpacing(20)
+        layout.setContentsMargins(30, 30, 30, 30)
         title = QLabel("Select System Image")
         title.setObjectName("page-title")
+        title.setAlignment(Qt.AlignCenter)
         self.image_list = QListWidget()
         self.image_list.itemClicked.connect(self.on_image_selected)
+        self.image_list.setObjectName("image-list")
         layout.addWidget(title)
         layout.addWidget(self.image_list)
-        self.setLayout(layout)
+        main_layout = QVBoxLayout(self)
+        main_layout.addWidget(main_frame)
+        self.setLayout(main_layout)
 
     def scan_images(self):
         default_item = QListWidgetItem("Default System Image")
@@ -412,14 +495,26 @@ class LocalePage(QWidget):
         self.init_ui()
 
     def init_ui(self):
-        layout = QVBoxLayout()
+        main_frame = QFrame()
+        main_frame.setFrameStyle(QFrame.NoFrame)
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(10)
+        shadow.setOffset(0, 3)
+        shadow.setColor(Qt.black)
+        main_frame.setGraphicsEffect(shadow)
+        layout = QVBoxLayout(main_frame)
+        layout.setSpacing(20)
+        layout.setContentsMargins(30, 30, 30, 30)
         title = QLabel("Select Locale")
         title.setObjectName("page-title")
+        title.setAlignment(Qt.AlignCenter)
         self.search_edit = QLineEdit()
         self.search_edit.setPlaceholderText("Search locales...")
         self.search_edit.textChanged.connect(self.filter_locales)
+        self.search_edit.setObjectName("search-edit")
         self.locale_list = QListWidget()
         self.locale_list.itemClicked.connect(self.on_locale_selected)
+        self.locale_list.setObjectName("locale-list")
         try:
             result = subprocess.run(['ls', '/usr/share/locale'], capture_output=True, text=True)
             locales = result.stdout.strip().split('\n')
@@ -435,7 +530,9 @@ class LocalePage(QWidget):
         layout.addWidget(title)
         layout.addWidget(self.search_edit)
         layout.addWidget(self.locale_list)
-        self.setLayout(layout)
+        main_layout = QVBoxLayout(self)
+        main_layout.addWidget(main_frame)
+        self.setLayout(main_layout)
 
     def filter_locales(self):
         text = self.search_edit.text().lower()
@@ -456,14 +553,26 @@ class TimezonePage(QWidget):
         self.init_ui()
 
     def init_ui(self):
-        layout = QVBoxLayout()
+        main_frame = QFrame()
+        main_frame.setFrameStyle(QFrame.NoFrame)
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(10)
+        shadow.setOffset(0, 3)
+        shadow.setColor(Qt.black)
+        main_frame.setGraphicsEffect(shadow)
+        layout = QVBoxLayout(main_frame)
+        layout.setSpacing(20)
+        layout.setContentsMargins(30, 30, 30, 30)
         title = QLabel("Select Timezone")
         title.setObjectName("page-title")
+        title.setAlignment(Qt.AlignCenter)
         self.search_edit = QLineEdit()
         self.search_edit.setPlaceholderText("Search timezones...")
         self.search_edit.textChanged.connect(self.filter_timezones)
+        self.search_edit.setObjectName("search-edit")
         self.tz_list = QListWidget()
         self.tz_list.itemClicked.connect(self.on_tz_selected)
+        self.tz_list.setObjectName("timezone-list")
         try:
             result = subprocess.run(['timedatectl', 'list-timezones'], capture_output=True, text=True)
             timezones = result.stdout.strip().split('\n')
@@ -479,7 +588,9 @@ class TimezonePage(QWidget):
         layout.addWidget(title)
         layout.addWidget(self.search_edit)
         layout.addWidget(self.tz_list)
-        self.setLayout(layout)
+        main_layout = QVBoxLayout(self)
+        main_layout.addWidget(main_frame)
+        self.setLayout(main_layout)
 
     def filter_timezones(self):
         text = self.search_edit.text().lower()
@@ -500,14 +611,26 @@ class KeyboardPage(QWidget):
         self.init_ui()
 
     def init_ui(self):
-        layout = QVBoxLayout()
+        main_frame = QFrame()
+        main_frame.setFrameStyle(QFrame.NoFrame)
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(10)
+        shadow.setOffset(0, 3)
+        shadow.setColor(Qt.black)
+        main_frame.setGraphicsEffect(shadow)
+        layout = QVBoxLayout(main_frame)
+        layout.setSpacing(20)
+        layout.setContentsMargins(30, 30, 30, 30)
         title = QLabel("Select Keyboard Layout")
         title.setObjectName("page-title")
+        title.setAlignment(Qt.AlignCenter)
         self.search_edit = QLineEdit()
         self.search_edit.setPlaceholderText("Search keyboard layouts...")
         self.search_edit.textChanged.connect(self.filter_keyboards)
+        self.search_edit.setObjectName("search-edit")
         self.kb_list = QListWidget()
         self.kb_list.itemClicked.connect(self.on_kb_selected)
+        self.kb_list.setObjectName("keyboard-list")
         try:
             result = subprocess.run(['localectl', 'list-keymaps'], capture_output=True, text=True)
             keyboards = result.stdout.strip().split('\n')
@@ -523,7 +646,9 @@ class KeyboardPage(QWidget):
         layout.addWidget(title)
         layout.addWidget(self.search_edit)
         layout.addWidget(self.kb_list)
-        self.setLayout(layout)
+        main_layout = QVBoxLayout(self)
+        main_layout.addWidget(main_frame)
+        self.setLayout(main_layout)
 
     def filter_keyboards(self):
         text = self.search_edit.text().lower()
@@ -543,20 +668,42 @@ class SummaryPage(QWidget):
         self.init_ui()
 
     def init_ui(self):
-        layout = QVBoxLayout()
+        main_frame = QFrame()
+        main_frame.setFrameStyle(QFrame.NoFrame)
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(12)
+        shadow.setOffset(0, 4)
+        shadow.setColor(Qt.black)
+        main_frame.setGraphicsEffect(shadow)
+        layout = QVBoxLayout(main_frame)
+        layout.setSpacing(25)
+        layout.setContentsMargins(30, 30, 30, 30)
         title = QLabel("Installation Summary")
         title.setObjectName("page-title")
+        title.setAlignment(Qt.AlignCenter)
+        summary_frame = QFrame()
+        summary_frame.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
+        summary_layout = QVBoxLayout(summary_frame)
+        summary_layout.setContentsMargins(20, 20, 20, 20)
         self.summary_text = QLabel()
-        self.summary_text.setFrameStyle(QFrame.StyledPanel | QFrame.Sunken)
         self.summary_text.setWordWrap(True)
-        self.summary_text.setMargin(15)
+        summary_layout.addWidget(self.summary_text)
+        warning_frame = QFrame()
+        warning_layout = QHBoxLayout(warning_frame)
+        warning_layout.setContentsMargins(10, 10, 10, 10)
+        warning_icon = QLabel()
+        warning_icon.setPixmap(self.style().standardIcon(QStyle.SP_MessageBoxWarning).pixmap(24, 24))
         warning = QLabel("Warning: Click 'Install' to begin the installation process. This cannot be undone!")
         warning.setObjectName("warning-label")
+        warning_layout.addWidget(warning_icon)
+        warning_layout.addWidget(warning, 1)
         layout.addWidget(title)
-        layout.addWidget(self.summary_text)
-        layout.addWidget(warning)
+        layout.addWidget(summary_frame)
+        layout.addWidget(warning_frame)
         layout.addStretch()
-        self.setLayout(layout)
+        main_layout = QVBoxLayout(self)
+        main_layout.addWidget(main_frame)
+        self.setLayout(main_layout)
 
     def update_summary(self, disk, boot_option, partition_config, image, locale, timezone, keyboard):
         summary = f"""<b>Installation Target:</b> {disk or 'Not selected'}<br><br>
@@ -584,16 +731,29 @@ class InstallationPage(QWidget):
         self.init_ui()
 
     def init_ui(self):
-        layout = QVBoxLayout()
+        main_frame = QFrame()
+        main_frame.setFrameStyle(QFrame.NoFrame)
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(12)
+        shadow.setOffset(0, 4)
+        shadow.setColor(Qt.black)
+        main_frame.setGraphicsEffect(shadow)
+        layout = QVBoxLayout(main_frame)
+        layout.setSpacing(15)
+        layout.setContentsMargins(30, 30, 30, 30)
         title = QLabel("Installing ObsidianOS")
         title.setObjectName("page-title")
+        title.setAlignment(Qt.AlignCenter)
         self.status_label = QLabel("Preparing installation...")
+        self.status_label.setAlignment(Qt.AlignCenter)
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, 0)
         self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
         self.log_text.setFont(QFont("Monospace", 10))
+        self.log_text.setObjectName("log-text")
         self.input_area = QWidget()
+        self.input_area.setObjectName("input-area")
         input_layout = QVBoxLayout(self.input_area)
         self.question_label = QLabel()
         self.question_label.hide()
@@ -620,7 +780,9 @@ class InstallationPage(QWidget):
         layout.addWidget(self.progress_bar)
         layout.addWidget(self.log_text)
         layout.addWidget(self.input_area)
-        self.setLayout(layout)
+        main_layout = QVBoxLayout(self)
+        main_layout.addWidget(main_frame)
+        self.setLayout(main_layout)
         self.yes_button.clicked.connect(lambda: self.send_y_n('y'))
         self.no_button.clicked.connect(lambda: self.send_y_n('n'))
         self.is_y_n_prompt_active = False
@@ -720,9 +882,17 @@ class FinishedPage(QWidget):
         self.init_ui()
 
     def init_ui(self):
-        layout = QVBoxLayout()
+        main_frame = QFrame()
+        main_frame.setFrameStyle(QFrame.NoFrame)
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(15)
+        shadow.setOffset(0, 5)
+        shadow.setColor(Qt.black)
+        main_frame.setGraphicsEffect(shadow)
+        layout = QVBoxLayout(main_frame)
         layout.setAlignment(Qt.AlignCenter)
         layout.setSpacing(30)
+        layout.setContentsMargins(40, 40, 40, 40)
         icon_label = QLabel()
         icon_pixmap = self.style().standardIcon(QStyle.SP_DialogApplyButton).pixmap(64, 64)
         icon_label.setPixmap(icon_pixmap)
@@ -733,15 +903,20 @@ class FinishedPage(QWidget):
         message = QLabel("ObsidianOS has been successfully installed on your system.\n\nPlease remove the installation media and restart your computer.")
         message.setAlignment(Qt.AlignCenter)
         message.setWordWrap(True)
+        button_layout = QHBoxLayout()
+        button_layout.setSpacing(20)
         self.restart_button = QPushButton("Restart Now")
         self.restart_button.setIcon(QIcon.fromTheme("system-reboot"))
         self.show_log_button = QPushButton("Show Log")
+        button_layout.addWidget(self.restart_button)
+        button_layout.addWidget(self.show_log_button)
         layout.addWidget(icon_label)
         layout.addWidget(title)
         layout.addWidget(message)
-        layout.addWidget(self.restart_button)
-        layout.addWidget(self.show_log_button)
-        self.setLayout(layout)
+        layout.addLayout(button_layout)
+        main_layout = QVBoxLayout(self)
+        main_layout.addWidget(main_frame, 0, Qt.AlignCenter)
+        self.setLayout(main_layout)
 
 class ObsidianOSInstaller(QMainWindow):
     def __init__(self):
@@ -947,9 +1122,9 @@ if __name__ == "__main__":
             font-size: 12px;
         }
         QPushButton {
-            padding: 8px 16px;
+            padding: 10px 18px;
             border: 1px solid palette(dark);
-            border-radius: 4px;
+            border-radius: 6px;
             background-color: palette(button);
             color: palette(button-text);
         }
@@ -962,15 +1137,17 @@ if __name__ == "__main__":
             color: palette(midlight);
         }
         QLabel#welcome-title {
-            font-size: 24px;
+            font-size: 36px;
             font-weight: bold;
+            color: palette(highlight);
         }
         QLabel#welcome-subtitle {
-            font-size: 14px;
+            font-size: 16px;
         }
         QLabel#page-title {
-            font-size: 16px;
+            font-size: 18px;
             font-weight: bold;
+            color: palette(highlight);
         }
         QLabel#warning-label {
             font-weight: bold;
@@ -980,14 +1157,14 @@ if __name__ == "__main__":
             font-style: italic;
         }
         QLabel#finished-title {
-            font-size: 20px;
+            font-size: 22px;
             font-weight: bold;
-            color: palette(text);
+            color: palette(highlight);
         }
         QGroupBox {
             font-weight: bold;
             border: 1px solid palette(dark);
-            border-radius: 4px;
+            border-radius: 6px;
             margin-top: 1ex;
         }
         QGroupBox::title {
@@ -997,19 +1174,76 @@ if __name__ == "__main__":
         }
         QListWidget {
             border: 1px solid palette(dark);
-            border-radius: 4px;
+            border-radius: 6px;
+            background-color: palette(base);
+            selection-background-color: palette(highlight);
+            selection-color: palette(highlighted-text);
+        }
+        QListWidget::item {
+            padding: 8px;
+        }
+        QListWidget::item:hover {
+            background-color: palette(alternate-base);
+        }
+        QListWidget#disk-list {
+            alternate-background-color: palette(alternate-base);
+        }
+        QListWidget#image-list, QListWidget#locale-list, QListWidget#timezone-list, QListWidget#keyboard-list {
+            border: 1px solid palette(dark);
+            border-radius: 6px;
+            background-color: palette(base);
+            selection-background-color: palette(highlight);
+            selection-color: palette(highlighted-text);
+        }
+        QListWidget#image-list::item, QListWidget#locale-list::item, QListWidget#timezone-list::item, QListWidget#keyboard-list::item {
+            padding: 8px;
+        }
+        QListWidget#image-list::item:hover, QListWidget#locale-list::item:hover, QListWidget#timezone-list::item:hover, QListWidget#keyboard-list::item:hover {
+            background-color: palette(alternate-base);
+        }
+        QLineEdit#search-edit {
+            border: 1px solid palette(dark);
+            border-radius: 6px;
+            padding: 5px;
+            background-color: palette(base);
         }
         QTextEdit {
             border: 1px solid palette(dark);
-            border-radius: 4px;
+            border-radius: 6px;
+            background-color: palette(base);
+        }
+        QTextEdit#log-text {
+            font-family: monospace;
+        }
+        QWidget#input-area {
+            border: 1px solid palette(dark);
+            border-radius: 6px;
+            background-color: palette(base);
         }
         QProgressBar {
             border: 1px solid palette(dark);
-            border-radius: 4px;
+            border-radius: 6px;
             text-align: center;
+            background-color: palette(base);
         }
         QProgressBar::chunk {
             background-color: palette(highlight);
+            border-radius: 4px;
+        }
+        QFrame {
+            background-color: palette(window);
+            border-radius: 8px;
+        }
+        QGroupBox#advanced-group {
+            border: 2px solid palette(highlight);
+            border-radius: 8px;
+        }
+        QRadioButton {
+            spacing: 8px;
+        }
+        QRadioButton::indicator {
+            width: 16px;
+            height: 16px;
         }
     """)
     installer = ObsidianOSInstaller()
