@@ -2,6 +2,9 @@
 
 This repository contains the graphical installer for ObsidianOS, an A/B GNU/Linux distribution based on Arch. This installer is built using PySide6 and provides a user-friendly interface to guide you through the installation process. Comes with [ObsidianOS KDE](https://github.com/Obsidian-OS/archiso-plasma) and [ObsidianOS COSMIC](https://github.com/Obsidian-OS/archiso-cosmic).
 
+## Screenshots
+*Wait for me to go in Github WebUI to add em lol*
+
 ## Features
 
 *   **Disk Selection:** Easily select the target disk for installation.
@@ -34,6 +37,10 @@ Follow the on-screen instructions to complete the installation of ObsidianOS.
 ## Development
 
 The installer is written in Python and uses the PySide6 framework for its graphical user interface.
+
+## Test Mode
+There's also the **Test Mode** which you can simulate installation, without touch any of your drives. Kinda like dry-run..
+To use test mode, just launch the installer with the `--test` command-line argument.
 
 ## License
 
