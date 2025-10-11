@@ -3,12 +3,15 @@ import sys
 import os
 import subprocess
 import time
+import re
 from pathlib import Path
 script_dir = os.path.dirname(os.path.abspath(__file__))
-from PySide6.QtWidgets import (QApplication, QMainWindow, QStackedWidget, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QLabel, QListWidget, QRadioButton, QButtonGroup, QProgressBar, QTextEdit, QFrame, QSpacerItem, QSizePolicy, QListWidgetItem, QSpinBox, QFormLayout, QGroupBox, QMessageBox, QComboBox)
+from PySide6.QtWidgets import (QApplication, QMainWindow, QStackedWidget, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QLabel, QListWidget, QRadioButton, QButtonGroup, QProgressBar, QTextEdit, QFrame, QSpacerItem, QSizePolicy, QListWidgetItem, QSpinBox, QFormLayout, QGroupBox, QMessageBox, QComboBox, QStyle, QDialog)
 from PySide6.QtCore import Qt, QThread, QTimer, Signal, QProcess
 from PySide6.QtGui import QFont, QPalette, QPixmap, QIcon, QTextCursor
 import pty
+
+test_mode = "--test" in sys.argv
 
 class InstallWorker(QThread):
     progress_updated = Signal(str)
@@ -30,27 +33,42 @@ class InstallWorker(QThread):
 
     def run(self):
         try:
-            cmd = [
-                'sudo', '-S', 'obsidianctl', 'install',
-                self.disk,
-                self.image,
-                '--rootfs-size', str(self.rootfs_size),
-                '--esp-size', str(self.esp_size),
-                '--etc-size', str(self.etc_size),
-                '--var-size', str(self.var_size)
-            ]
+            if test_mode:
+                dummy_cmd = [
+                    'sh', '-c',
+                    'echo "Test running..."; sleep 1; '
+                    'echo "Partitioning disk..."; sleep 1; '
+                    'echo "Installing system image..."; sleep 2; '
+                    'echo "Configuring bootloader..."; sleep 1; '
+                    'read -p "Do you want to proceed (y/N): " answer; echo "User answered: $answer"; '
+                    'sleep 5; '
+                    'echo "Installation complete"'
+                ]
+                self.progress_updated.emit("Starting installation...")
+            else:
+                cmd = [
+                    'sudo', '-S', 'obsidianctl', 'install',
+                    self.disk,
+                    self.image,
+                    '--rootfs-size', str(self.rootfs_size),
+                    '--esp-size', str(self.esp_size),
+                    '--etc-size', str(self.etc_size),
+                    '--var-size', str(self.var_size)
+                ]
 
-            if self.dual_boot:
-                cmd.append('--dual-boot')
+                if self.dual_boot:
+                    cmd.append('--dual-boot')
 
-            if self.filesystem_type == "f2fs":
-                cmd.append('--use-f2fs')
+                if self.filesystem_type == "f2fs":
+                    cmd.append('--use-f2fs')
 
-            self.progress_updated.emit("Starting installation...")
+                self.progress_updated.emit("Starting installation...")
+                dummy_cmd = cmd
+
             master_fd, slave_fd = pty.openpty()
             self.master_fd = master_fd
             self.process = subprocess.Popen(
-                cmd,
+                dummy_cmd,
                 stdin=slave_fd,
                 stdout=slave_fd,
                 stderr=slave_fd,
@@ -60,6 +78,7 @@ class InstallWorker(QThread):
             )
             os.close(slave_fd)
             import select
+            last_output_time = time.time()
             while True:
                 if self.process.poll() is not None:
                     try:
@@ -68,9 +87,9 @@ class InstallWorker(QThread):
                             for line in remaining_output.splitlines():
                                 if line.strip():
                                     self.progress_updated.emit(line)
-                                    if "Installation complete!" in line:
+                                    if "installation complete" in line.lower():
                                         self.installation_succeeded_by_output = True
-                                    elif "Error:" in line or "failed" in line.lower():
+                                    elif "error:" in line.lower() or "failed" in line.lower():
                                         self.installation_failed_by_output = True
                     except OSError:
                         pass
@@ -81,12 +100,13 @@ class InstallWorker(QThread):
                     try:
                         output = os.read(self.master_fd, 1024).decode(errors='ignore')
                         if output:
+                            last_output_time = time.time()
                             for line in output.splitlines():
                                 if line.strip():
                                     self.progress_updated.emit(line)
-                                    if "Installation complete!" in line:
+                                    if "installation complete" in line.lower():
                                         self.installation_succeeded_by_output = True
-                                    elif "Error:" in line or "failed" in line.lower():
+                                    elif "error:" in line.lower() or "failed" in line.lower():
                                         self.installation_failed_by_output = True
                     except OSError:
                         break
@@ -127,6 +147,8 @@ class InstallWorker(QThread):
                     pass
                 self.master_fd = None
 
+
+
     def send_input(self, text):
         if self.master_fd is not None and self.process and self.process.poll() is None:
             try:
@@ -146,20 +168,17 @@ class WelcomePage(QWidget):
         layout.setSpacing(30)
         title = QLabel("ObsidianOS")
         title.setAlignment(Qt.AlignCenter)
-        font = QFont()
-        font.setPointSize(24)
-        font.setBold(True)
-        title.setFont(font)
-        subtitle = QLabel("An A/B GNU/Linux distro based on Arch.")
+        title.setObjectName("welcome-title")
+        subtitle = QLabel("The GNU/Linux distribution with A/B Partitioning.")
         subtitle.setAlignment(Qt.AlignCenter)
-        font = QFont()
-        font.setPointSize(14)
-        subtitle.setFont(font)
-        description = QLabel("Let's start the installation now!")
+        subtitle.setObjectName("welcome-subtitle")
+        description = QLabel("Let's start the installation now!" if not test_mode else "Running in test mode!!")
         description.setAlignment(Qt.AlignCenter)
         description.setWordWrap(True)
         logo_label = QLabel()
-        pixmap = QPixmap(os.path.join("/usr/share/pixmaps", "obsidianos.png"))
+        pixmap = QPixmap(os.path.join(script_dir, "logo.svg"))
+        if pixmap.isNull():
+            pixmap = QPixmap(os.path.join("/usr/share/pixmaps", "obsidianos.png"))
         if not pixmap.isNull():
             max_logo_width = 200
             scaled_pixmap = pixmap.scaled(max_logo_width, pixmap.height(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
@@ -182,25 +201,31 @@ class DiskSelectionPage(QWidget):
     def init_ui(self):
         layout = QVBoxLayout()
         title = QLabel("Select Installation Disk")
-        font = QFont()
-        font.setPointSize(16)
-        font.setBold(True)
-        title.setFont(font)
+        title.setObjectName("page-title")
         self.disk_list = QListWidget()
         self.disk_list.itemClicked.connect(self.on_disk_selected)
-        warning = QLabel("⚠️ All data on the selected disk will be erased!")
-        warning_font = QFont()
-        warning_font.setBold(True)
-        warning.setFont(warning_font)
-        palette = warning.palette()
-        palette.setColor(QPalette.WindowText, Qt.red)
-        warning.setPalette(palette)
+        warning = QLabel("Warning: All data on the selected disk will be erased!")
+        warning.setObjectName("warning-label")
         layout.addWidget(title)
         layout.addWidget(self.disk_list)
         layout.addWidget(warning)
         self.setLayout(layout)
 
     def scan_disks(self):
+        if test_mode:
+            dummy_disks = [
+                ("sda", "500G", "Test SSD"),
+                ("sdb", "1T", "Test HDD"),
+                ("nvme0n1", "256G", "Test NVMe")
+            ]
+            for name, size, model in dummy_disks:
+                item_text = f"/dev/{name} - {size} - {model}"
+                item = QListWidgetItem(item_text)
+                item.setIcon(QIcon.fromTheme("drive-harddisk"))
+                item.setData(Qt.UserRole, f"/dev/{name}")
+                self.disk_list.addItem(item)
+            return
+
         try:
             result = subprocess.run(['lsblk', '-d', '-n', '-o', 'NAME,SIZE,MODEL'],
                                   capture_output=True, text=True)
@@ -214,10 +239,12 @@ class DiskSelectionPage(QWidget):
                         model = parts[2] if len(parts) > 2 else "Unknown"
                         item_text = f"/dev/{name} - {size} - {model}"
                         item = QListWidgetItem(item_text)
+                        item.setIcon(QIcon.fromTheme("drive-harddisk"))
                         item.setData(Qt.UserRole, f"/dev/{name}")
                         self.disk_list.addItem(item)
         except:
             item = QListWidgetItem("ERROR DETECTING DISKS")
+            item.setIcon(QIcon.fromTheme("dialog-error"))
             item.setData(Qt.UserRole, "ERROR")
             self.disk_list.addItem(item)
 
@@ -235,10 +262,7 @@ class DualBootPage(QWidget):
     def init_ui(self):
         layout = QVBoxLayout()
         title = QLabel("Dual Boot Configuration")
-        font = QFont()
-        font.setPointSize(16)
-        font.setBold(True)
-        title.setFont(font)
+        title.setObjectName("page-title")
         self.button_group = QButtonGroup()
         self.erase_option = QRadioButton("Erase entire disk and install ObsidianOS")
         self.erase_option.setChecked(True)
@@ -269,10 +293,7 @@ class AdvancedOptionsPage(QWidget):
     def init_ui(self):
         layout = QVBoxLayout()
         title = QLabel("Advanced Options")
-        font = QFont()
-        font.setPointSize(16)
-        font.setBold(True)
-        title.setFont(font)
+        title.setObjectName("page-title")
         description = QLabel("Configure partition sizes for your ObsidianOS installation:")
         description.setWordWrap(True)
         group_box = QGroupBox("Partition Configuration")
@@ -302,11 +323,9 @@ class AdvancedOptionsPage(QWidget):
         self.filesystem_type_combo.addItem("f2fs")
         form_layout.addRow("Filesystem Type:", self.filesystem_type_combo)
         group_box.setLayout(form_layout)
-        info_label = QLabel("ℹ️ The A/B system requires duplicate partitions for safe updates and rollback capabilities.")
+        info_label = QLabel("The A/B system requires duplicate partitions for safe updates and rollback capabilities.")
         info_label.setWordWrap(True)
-        info_font = QFont()
-        info_font.setItalic(True)
-        info_label.setFont(info_font)
+        info_label.setObjectName("info-label")
         layout.addWidget(title)
         layout.addWidget(description)
         layout.addWidget(group_box)
@@ -335,10 +354,7 @@ class SystemImagePage(QWidget):
     def init_ui(self):
         layout = QVBoxLayout()
         title = QLabel("Select System Image")
-        font = QFont()
-        font.setPointSize(16)
-        font.setBold(True)
-        title.setFont(font)
+        title.setObjectName("page-title")
         self.image_list = QListWidget()
         self.image_list.itemClicked.connect(self.on_image_selected)
         layout.addWidget(title)
@@ -346,22 +362,25 @@ class SystemImagePage(QWidget):
         self.setLayout(layout)
 
     def scan_images(self):
-        default_item = QListWidgetItem("📦 Default System Image")
+        default_item = QListWidgetItem("Default System Image")
+        default_item.setIcon(QIcon.fromTheme("package"))
         default_item.setData(Qt.UserRole, "/etc/system.sfs")
         self.image_list.addItem(default_item)
         self.image_list.setCurrentItem(default_item)
         preconf_path = Path("/usr/preconf")
         if preconf_path.exists():
             for file in preconf_path.glob("*.mkobsfs"):
-                item = QListWidgetItem(f"🔧 {file.stem}")
+                item = QListWidgetItem(file.stem)
+                item.setIcon(QIcon.fromTheme("system-run"))
                 item.setData(Qt.UserRole, str(file))
                 self.image_list.addItem(item)
 
         home_path = Path.home()
         for ext in ["*.mkobsfs", "*.sfs"]:
             for file in home_path.glob(ext):
-                icon = "📁" if ext == "*.mkobsfs" else "💿"
-                item = QListWidgetItem(f"{icon} {file.name}")
+                icon_name = "folder" if ext == "*.mkobsfs" else "media-optical"
+                item = QListWidgetItem(file.name)
+                item.setIcon(QIcon.fromTheme(icon_name))
                 item.setData(Qt.UserRole, str(file))
                 self.image_list.addItem(item)
 
@@ -379,21 +398,13 @@ class SummaryPage(QWidget):
     def init_ui(self):
         layout = QVBoxLayout()
         title = QLabel("Installation Summary")
-        font = QFont()
-        font.setPointSize(16)
-        font.setBold(True)
-        title.setFont(font)
+        title.setObjectName("page-title")
         self.summary_text = QLabel()
         self.summary_text.setFrameStyle(QFrame.StyledPanel | QFrame.Sunken)
         self.summary_text.setWordWrap(True)
         self.summary_text.setMargin(15)
-        warning = QLabel("⚠️ Click 'Install' to begin the installation process. This cannot be undone!")
-        warning_font = QFont()
-        warning_font.setBold(True)
-        warning.setFont(warning_font)
-        palette = warning.palette()
-        palette.setColor(QPalette.WindowText, Qt.red)
-        warning.setPalette(palette)
+        warning = QLabel("Warning: Click 'Install' to begin the installation process. This cannot be undone!")
+        warning.setObjectName("warning-label")
         layout.addWidget(title)
         layout.addWidget(self.summary_text)
         layout.addWidget(warning)
@@ -421,37 +432,66 @@ class InstallationPage(QWidget):
     def init_ui(self):
         layout = QVBoxLayout()
         title = QLabel("Installing ObsidianOS")
-        font = QFont()
-        font.setPointSize(16)
-        font.setBold(True)
-        title.setFont(font)
+        title.setObjectName("page-title")
         self.status_label = QLabel("Preparing installation...")
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, 0)
         self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
-        self.log_text.setFont(QFont("Courier", 10))
-        input_layout = QHBoxLayout()
+        self.log_text.setFont(QFont("Monospace", 10))
+        self.input_area = QWidget()
+        input_layout = QVBoxLayout(self.input_area)
+        self.question_label = QLabel()
+        self.question_label.hide()
+        input_layout.addWidget(self.question_label)
+        button_layout = QHBoxLayout()
+        self.yes_button = QPushButton("Yes")
+        self.no_button = QPushButton("No")
+        self.yes_button.hide()
+        self.no_button.hide()
+        button_layout.addWidget(self.yes_button)
+        button_layout.addWidget(self.no_button)
+        input_layout.addLayout(button_layout)
         self.input_field = QTextEdit()
         self.input_field.setMaximumHeight(30)
-        self.send_button = QPushButton("Send")
+        self.send_button = QPushButton()
+        self.send_button.setIcon(self.style().standardIcon(QStyle.SP_ArrowForward))
         self.send_button.clicked.connect(self.send_input)
-        input_layout.addWidget(self.input_field)
-        input_layout.addWidget(self.send_button)
+        text_layout = QHBoxLayout()
+        text_layout.addWidget(self.input_field)
+        text_layout.addWidget(self.send_button)
+        input_layout.addLayout(text_layout)
         layout.addWidget(title)
         layout.addWidget(self.status_label)
         layout.addWidget(self.progress_bar)
         layout.addWidget(self.log_text)
-        layout.addLayout(input_layout)
+        layout.addWidget(self.input_area)
         self.setLayout(layout)
+        self.yes_button.clicked.connect(lambda: self.send_y_n('y'))
+        self.no_button.clicked.connect(lambda: self.send_y_n('n'))
+        self.is_y_n_prompt_active = False
 
     def send_input(self):
+        if self.is_y_n_prompt_active:
+            return
         if self.install_worker:
             text = self.input_field.toPlainText().strip()
             if text:
                 self.install_worker.send_input(text)
-                self.log_text.append(f">>> {text}")
+                self.log_text.append(f"--> {text}")
                 self.input_field.clear()
+
+    def send_y_n(self, choice):
+        if self.install_worker:
+            self.install_worker.send_input(choice)
+            self.log_text.append(f"--> {choice}")
+            self.question_label.hide()
+            self.yes_button.hide()
+            self.no_button.hide()
+            self.input_field.show()
+            self.send_button.show()
+            self.is_y_n_prompt_active = False
+            self.input_field.clear()
 
     def start_installation(self, disk, image, partition_config, dual_boot, filesystem_type):
         self.status_label.setText("Starting installation...")
@@ -472,6 +512,17 @@ class InstallationPage(QWidget):
 
     def update_progress(self, message):
         self.status_label.setText("Installation in progress...")
+        if re.match(r".*\([yY]/[nN]\):\s*$", message):
+            match = re.match(r"(.*)\([yY]/[nN]\):\s*$", message)
+            if match:
+                question = match.group(1).strip()
+                self.question_label.setText(question)
+                self.question_label.show()
+                self.yes_button.show()
+                self.no_button.show()
+                self.input_field.hide()
+                self.send_button.hide()
+                self.is_y_n_prompt_active = True
         self.log_text.append(message)
         cursor = self.log_text.textCursor()
         cursor.movePosition(QTextCursor.End)
@@ -489,8 +540,8 @@ class InstallationPage(QWidget):
 
         self.send_button.setEnabled(False)
         self.input_field.setEnabled(False)
-        if hasattr(self.parent(), 'installation_complete_callback'):
-            self.parent().installation_complete_callback(success, message)
+        if hasattr(self, 'installation_complete_callback'):
+            self.installation_complete_callback(success, message)
 
 class FinishedPage(QWidget):
     def __init__(self):
@@ -501,22 +552,24 @@ class FinishedPage(QWidget):
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignCenter)
         layout.setSpacing(30)
+        icon_label = QLabel()
+        icon_pixmap = self.style().standardIcon(QStyle.SP_DialogApplyButton).pixmap(64, 64)
+        icon_label.setPixmap(icon_pixmap)
+        icon_label.setAlignment(Qt.AlignCenter)
         title = QLabel("Installation Complete!")
         title.setAlignment(Qt.AlignCenter)
-        font = QFont()
-        font.setPointSize(20)
-        font.setBold(True)
-        title.setFont(font)
-        palette = title.palette()
-        palette.setColor(QPalette.WindowText, Qt.darkGreen)
-        title.setPalette(palette)
-        message = QLabel("ObsidianOS has been successfully installed on your system.\nPlease remove the installation media and restart your computer.")
+        title.setObjectName("finished-title")
+        message = QLabel("ObsidianOS has been successfully installed on your system.\n\nPlease remove the installation media and restart your computer.")
         message.setAlignment(Qt.AlignCenter)
         message.setWordWrap(True)
         self.restart_button = QPushButton("Restart Now")
+        self.restart_button.setIcon(QIcon.fromTheme("system-reboot"))
+        self.show_log_button = QPushButton("Show Log")
+        layout.addWidget(icon_label)
         layout.addWidget(title)
         layout.addWidget(message)
         layout.addWidget(self.restart_button)
+        layout.addWidget(self.show_log_button)
         self.setLayout(layout)
 
 class ObsidianOSInstaller(QMainWindow):
@@ -530,7 +583,9 @@ class ObsidianOSInstaller(QMainWindow):
     def init_ui(self):
         self.setWindowTitle("ObsidianOS Installer")
         self.setFixedSize(800, 600)
-        app_icon = QPixmap(os.path.join("/usr/share/pixmaps", "obsidianos.png"))
+        app_icon = QPixmap(os.path.join(script_dir, "logo.svg"))
+        if app_icon.isNull():
+            app_icon = QPixmap(os.path.join("/usr/share/pixmaps", "obsidianos.png"))
         if not app_icon.isNull():
             self.setWindowIcon(QIcon(app_icon))
 
@@ -541,12 +596,15 @@ class ObsidianOSInstaller(QMainWindow):
         self.stacked_widget = QStackedWidget()
         button_layout = QHBoxLayout()
         button_layout.setContentsMargins(0, 20, 0, 0)
-        self.back_button = QPushButton("Back")
+        self.back_button = QPushButton()
+        self.back_button.setIcon(self.style().standardIcon(QStyle.SP_ArrowBack))
         self.back_button.clicked.connect(self.go_back)
         self.back_button.setEnabled(False)
         self.next_button = QPushButton("Next")
+        self.next_button.setIcon(self.style().standardIcon(QStyle.SP_ArrowForward))
         self.next_button.clicked.connect(self.go_next)
         self.install_button = QPushButton("Install")
+        self.install_button.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
         self.install_button.clicked.connect(self.start_installation)
         self.install_button.hide()
         spacer = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
@@ -663,6 +721,7 @@ class ObsidianOSInstaller(QMainWindow):
             self.update_buttons()
             finished_page = self.pages[7]
             finished_page.restart_button.clicked.connect(self.restart_system)
+            finished_page.show_log_button.clicked.connect(self.show_log)
         else:
             QMessageBox.critical(self, "Installation Failed", f"Installation failed: {message}")
 
@@ -677,8 +736,96 @@ class ObsidianOSInstaller(QMainWindow):
             except:
                 self.close()
 
+    def show_log(self):
+        log_text = self.pages[6].log_text.toPlainText()
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Installation Log")
+        layout = QVBoxLayout(dialog)
+        text_edit = QTextEdit()
+        text_edit.setPlainText(log_text)
+        text_edit.setReadOnly(True)
+        text_edit.setFont(QFont("Monospace", 10))
+        layout.addWidget(text_edit)
+        close_button = QPushButton("Close")
+        close_button.clicked.connect(dialog.accept)
+        layout.addWidget(close_button)
+        dialog.exec()
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    app.setStyleSheet("""
+        QWidget {
+            background-color: palette(window);
+            color: palette(window-text);
+            font-family: sans-serif;
+            font-size: 12px;
+        }
+        QPushButton {
+            padding: 8px 16px;
+            border: 1px solid palette(dark);
+            border-radius: 4px;
+            background-color: palette(button);
+            color: palette(button-text);
+        }
+        QPushButton:hover {
+            background-color: palette(highlight);
+            color: palette(highlighted-text);
+        }
+        QPushButton:disabled {
+            background-color: palette(mid);
+            color: palette(midlight);
+        }
+        QLabel#welcome-title {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        QLabel#welcome-subtitle {
+            font-size: 14px;
+        }
+        QLabel#page-title {
+            font-size: 16px;
+            font-weight: bold;
+        }
+        QLabel#warning-label {
+            font-weight: bold;
+            color: palette(text);
+        }
+        QLabel#info-label {
+            font-style: italic;
+        }
+        QLabel#finished-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: palette(text);
+        }
+        QGroupBox {
+            font-weight: bold;
+            border: 1px solid palette(dark);
+            border-radius: 4px;
+            margin-top: 1ex;
+        }
+        QGroupBox::title {
+            subcontrol-origin: margin;
+            left: 10px;
+            padding: 0 5px 0 5px;
+        }
+        QListWidget {
+            border: 1px solid palette(dark);
+            border-radius: 4px;
+        }
+        QTextEdit {
+            border: 1px solid palette(dark);
+            border-radius: 4px;
+        }
+        QProgressBar {
+            border: 1px solid palette(dark);
+            border-radius: 4px;
+            text-align: center;
+        }
+        QProgressBar::chunk {
+            background-color: palette(highlight);
+        }
+    """)
     installer = ObsidianOSInstaller()
     installer.show()
     sys.exit(app.exec())
