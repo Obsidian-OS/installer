@@ -3,13 +3,21 @@
 This repository contains the graphical installer for ObsidianOS, an A/B GNU/Linux distribution based on Arch. This installer is built using PySide6 and provides a user-friendly interface to guide you through the installation process. Comes with [ObsidianOS KDE](https://github.com/Obsidian-OS/archiso-plasma) and [ObsidianOS COSMIC](https://github.com/Obsidian-OS/archiso-cosmic).
 
 ## Screenshots
-<img width="887" height="685" alt="Intro Page" src="https://github.com/user-attachments/assets/78db3e91-a271-4832-bb68-19c60d535e46" />
-<img width="887" height="685" alt="Disk Selection" src="https://github.com/user-attachments/assets/638bfa73-3053-44ce-8349-71338076cb25" />
-<img width="887" height="685" alt="System Image Selection" src="https://github.com/user-attachments/assets/a1578c35-ed3f-4365-b348-18c4e11c1850" />
-<img width="887" height="685" alt="Summary Page" src="https://github.com/user-attachments/assets/5a947148-0569-4e23-983c-961922dce0d2" />
-<img width="887" height="685" alt="Installation (test-mode)" src="https://github.com/user-attachments/assets/f83fa1b7-e497-44c2-9020-696283fd6ac3" />
-<img width="887" height="685" alt="Finished Page" src="https://github.com/user-attachments/assets/184ba7c4-5d75-4b70-862f-41ca35bd8604" />
-<img width="887" height="685" alt="Finished Page w/ logs dialog" src="https://github.com/user-attachments/assets/355b5ddb-7108-4fdd-a83c-66430a9a7174" />
+*Note: These colors and icons come from the KDE theme I'm using, doesn't represent how it looks in the ISO image*
+<img width="933" height="957" alt="image" src="https://github.com/user-attachments/assets/a963000c-f2cf-441b-9c00-0dd45683a069" />
+<img width="933" height="957" alt="image" src="https://github.com/user-attachments/assets/710679ee-d511-4274-ae7e-19c184cef94e" />
+<img width="933" height="957" alt="image" src="https://github.com/user-attachments/assets/7f1c044a-4172-48c6-820d-37e522dcfed2" />
+<img width="933" height="957" alt="image" src="https://github.com/user-attachments/assets/13df36d1-3800-4038-8793-cb663be70aff" />
+<img width="933" height="957" alt="image" src="https://github.com/user-attachments/assets/4038266f-12d1-4c32-a011-7a84a149f4ce" />
+<img width="933" height="957" alt="image" src="https://github.com/user-attachments/assets/850f0e12-8eb1-470a-8283-c7a201a09d30" />
+<img width="933" height="957" alt="image" src="https://github.com/user-attachments/assets/866a62cc-e5e6-4dcc-9370-f387dec15e22" />
+<img width="933" height="957" alt="image" src="https://github.com/user-attachments/assets/eacb01d0-e60f-4cfc-9dc3-2ad6b03e681e" />
+<img width="933" height="957" alt="image" src="https://github.com/user-attachments/assets/9ba98bb8-c4ec-4eae-a2db-900e578f44cf" />
+<img width="933" height="957" alt="image" src="https://github.com/user-attachments/assets/cd1e4f92-58e5-4f1b-90d6-281a59dbac03" />
+<img width="933" height="957" alt="image" src="https://github.com/user-attachments/assets/ee53622f-4616-480f-b11d-ccdff4da8079" />
+<img width="933" height="957" alt="image" src="https://github.com/user-attachments/assets/a1bff842-cb22-4eb2-868a-b9420323e03d" />
+<img width="933" height="957" alt="image" src="https://github.com/user-attachments/assets/66ecd4bb-0395-4c9b-b890-da7e7328dbfd" />
+
 
 
 ## Features
