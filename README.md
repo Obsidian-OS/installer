@@ -12,6 +12,7 @@ This repository contains the graphical installer for ObsidianOS, an A/B GNU/Linu
 <img width="933" height="957" alt="image" src="https://github.com/user-attachments/assets/850f0e12-8eb1-470a-8283-c7a201a09d30" />
 <img width="933" height="957" alt="image" src="https://github.com/user-attachments/assets/866a62cc-e5e6-4dcc-9370-f387dec15e22" />
 <img width="933" height="957" alt="image" src="https://github.com/user-attachments/assets/eacb01d0-e60f-4cfc-9dc3-2ad6b03e681e" />
+<img width="935" height="956" alt="image" src="https://github.com/user-attachments/assets/021d9f47-a77b-4213-8b8c-5ad3d5d303c3" />
 <img width="933" height="957" alt="image" src="https://github.com/user-attachments/assets/9ba98bb8-c4ec-4eae-a2db-900e578f44cf" />
 <img width="933" height="957" alt="image" src="https://github.com/user-attachments/assets/cd1e4f92-58e5-4f1b-90d6-281a59dbac03" />
 <img width="933" height="957" alt="image" src="https://github.com/user-attachments/assets/ee53622f-4616-480f-b11d-ccdff4da8079" />
