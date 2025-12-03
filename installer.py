@@ -59,6 +59,10 @@ class InstallWorker(QThread):
         locale,
         timezone,
         keyboard,
+        fullname,
+        username,
+        password,
+        root_password,
     ):
         super().__init__()
         self.disk = disk
@@ -72,6 +76,10 @@ class InstallWorker(QThread):
         self.locale = locale
         self.timezone = timezone
         self.keyboard = keyboard
+        self.fullname = fullname
+        self.username = username
+        self.password = password
+        self.root_password = root_password
         self.process = None
         self.master_fd = None
         self.installation_succeeded_by_output = False
@@ -221,6 +229,11 @@ class InstallWorker(QThread):
             f"localectl set-locale LANG={self.locale} || true",
             f"timedatectl set-timezone {self.timezone} || true",
             f"localectl set-keymap {self.keyboard} || true",
+            f"usermod -l {self.username} user",
+            f"usermod -d /home/{self.username} -m {self.username}",
+            f'usermod -c "{self.fullname}" {self.username}',
+            f"echo '{self.username}:{self.password}' | chpasswd",
+            f"echo 'root:{self.root_password}' | chpasswd",
         ]
         for cmd in commands:
             self.send_input(cmd)
@@ -911,6 +924,124 @@ class TimezonePage(QWidget):
         return self.selected_timezone
 
 
+class UserPage(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.init_ui()
+
+    def init_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setSpacing(20)
+        layout.setContentsMargins(40, 30, 40, 30)
+
+        header = QLabel("Create User Account")
+        header.setObjectName("page-header")
+
+        desc = QLabel("Set up your user account and passwords.")
+        desc.setObjectName("page-description")
+        desc.setWordWrap(True)
+
+        card = ModernCard()
+        card_layout = QVBoxLayout(card)
+        card_layout.setSpacing(16)
+        card_layout.setContentsMargins(20, 20, 20, 20)
+
+        fullname_layout = QHBoxLayout()
+        fullname_label = QLabel("Full Name:")
+        fullname_label.setMinimumWidth(120)
+        self.fullname_edit = QLineEdit()
+        self.fullname_edit.setText("User")
+        self.fullname_edit.setPlaceholderText("John Doe")
+        self.fullname_edit.setObjectName("user-field")
+        fullname_layout.addWidget(fullname_label)
+        fullname_layout.addWidget(self.fullname_edit)
+
+        username_layout = QHBoxLayout()
+        username_label = QLabel("Username:")
+        username_label.setMinimumWidth(120)
+        self.username_edit = QLineEdit()
+        self.username_edit.setText("user")
+        self.username_edit.setPlaceholderText("johndoe")
+        self.username_edit.setObjectName("user-field")
+        username_layout.addWidget(username_label)
+        username_layout.addWidget(self.username_edit)
+
+        password_layout = QHBoxLayout()
+        password_label = QLabel("Password:")
+        password_label.setMinimumWidth(120)
+        self.password_edit = QLineEdit()
+        self.password_edit.setEchoMode(QLineEdit.Password)
+        self.password_edit.setPlaceholderText("Enter password")
+        self.password_edit.setObjectName("user-field")
+        password_layout.addWidget(password_label)
+        password_layout.addWidget(self.password_edit)
+
+        confirm_layout = QHBoxLayout()
+        confirm_label = QLabel("Confirm Password:")
+        confirm_label.setMinimumWidth(120)
+        self.confirm_edit = QLineEdit()
+        self.confirm_edit.setEchoMode(QLineEdit.Password)
+        self.confirm_edit.setPlaceholderText("Confirm password")
+        self.confirm_edit.setObjectName("user-field")
+        confirm_layout.addWidget(confirm_label)
+        confirm_layout.addWidget(self.confirm_edit)
+
+        root_password_layout = QHBoxLayout()
+        root_password_label = QLabel("Root Password:")
+        root_password_label.setMinimumWidth(120)
+        self.root_password_edit = QLineEdit()
+        self.root_password_edit.setEchoMode(QLineEdit.Password)
+        self.root_password_edit.setPlaceholderText("Enter root password")
+        self.root_password_edit.setObjectName("user-field")
+        root_password_layout.addWidget(root_password_label)
+        root_password_layout.addWidget(self.root_password_edit)
+
+        root_confirm_layout = QHBoxLayout()
+        root_confirm_label = QLabel("Confirm Root:")
+        root_confirm_label.setMinimumWidth(120)
+        self.root_confirm_edit = QLineEdit()
+        self.root_confirm_edit.setEchoMode(QLineEdit.Password)
+        self.root_confirm_edit.setPlaceholderText("Confirm root password")
+        self.root_confirm_edit.setObjectName("user-field")
+        root_confirm_layout.addWidget(root_confirm_label)
+        root_confirm_layout.addWidget(self.root_confirm_edit)
+
+        card_layout.addLayout(fullname_layout)
+        card_layout.addLayout(username_layout)
+        card_layout.addLayout(password_layout)
+        card_layout.addLayout(confirm_layout)
+        card_layout.addLayout(root_password_layout)
+        card_layout.addLayout(root_confirm_layout)
+
+        layout.addWidget(header)
+        layout.addWidget(desc)
+        layout.addWidget(card)
+        layout.addStretch()
+
+    def get_fullname(self):
+        return self.fullname_edit.text().strip() or "User"
+
+    def get_username(self):
+        return self.username_edit.text().strip() or "user"
+
+    def get_password(self):
+        return self.password_edit.text()
+
+    def get_root_password(self):
+        return self.root_password_edit.text()
+
+    def validate(self):
+        if not self.get_password():
+            return False, "Password is required"
+        if self.password_edit.text() != self.confirm_edit.text():
+            return False, "Passwords do not match"
+        if not self.get_root_password():
+            return False, "Root password is required"
+        if self.root_password_edit.text() != self.root_confirm_edit.text():
+            return False, "Root passwords do not match"
+        return True, ""
+
+
 class KeyboardPage(QWidget):
     def __init__(self):
         super().__init__()
@@ -1022,6 +1153,7 @@ class SummaryPage(QWidget):
             ("locale", "preferences-desktop-locale", "Locale"),
             ("timezone", "preferences-system-time", "Timezone"),
             ("keyboard", "input-keyboard", "Keyboard Layout"),
+            ("user", "user-info", "User Account"),
             ("partitions", "drive-multidisk", "Partition Layout"),
         ]
 
@@ -1071,7 +1203,16 @@ class SummaryPage(QWidget):
         layout.addWidget(warning_widget)
 
     def update_summary(
-        self, disk, boot_option, partition_config, image, locale, timezone, keyboard
+        self,
+        disk,
+        boot_option,
+        partition_config,
+        image,
+        locale,
+        timezone,
+        keyboard,
+        fullname,
+        username,
     ):
         self.summary_items["disk"].setText(disk or "Not selected")
         self.summary_items["boot"].setText(
@@ -1081,6 +1222,7 @@ class SummaryPage(QWidget):
         self.summary_items["locale"].setText(locale)
         self.summary_items["timezone"].setText(timezone)
         self.summary_items["keyboard"].setText(keyboard)
+        self.summary_items["user"].setText(f"{fullname} ({username})")
 
         partitions_text = (
             f"ESP: {partition_config['esp_size']} | "
@@ -1099,6 +1241,10 @@ class InstallationPage(QWidget):
         self.selected_locale = None
         self.selected_timezone = None
         self.selected_keyboard = None
+        self.selected_fullname = None
+        self.selected_username = None
+        self.selected_password = None
+        self.selected_root_password = None
         self.init_ui()
 
     def init_ui(self):
@@ -1213,12 +1359,20 @@ class InstallationPage(QWidget):
         locale,
         timezone,
         keyboard,
+        fullname,
+        username,
+        password,
+        root_password,
     ):
         self.status_label.setText("Starting installation...")
         self.log_text.clear()
         self.selected_locale = locale
         self.selected_timezone = timezone
         self.selected_keyboard = keyboard
+        self.selected_fullname = fullname
+        self.selected_username = username
+        self.selected_password = password
+        self.selected_root_password = root_password
         self.install_worker = InstallWorker(
             disk,
             image,
@@ -1231,6 +1385,10 @@ class InstallationPage(QWidget):
             locale,
             timezone,
             keyboard,
+            fullname,
+            username,
+            password,
+            root_password,
         )
         self.install_worker.progress_updated.connect(self.update_progress)
         self.install_worker.finished.connect(self.installation_finished)
@@ -1383,6 +1541,7 @@ class ObsidianOSInstaller(QMainWindow):
                 "Locale",
                 "Time",
                 "Keyboard",
+                "User",
                 "Summary",
                 "Install",
                 "Done",
@@ -1441,6 +1600,7 @@ class ObsidianOSInstaller(QMainWindow):
             LocalePage(),
             TimezonePage(),
             KeyboardPage(),
+            UserPage(),
             SummaryPage(),
             InstallationPage(),
             FinishedPage(),
@@ -1457,18 +1617,13 @@ class ObsidianOSInstaller(QMainWindow):
 
     def go_next(self):
         if not self.validate_current_page():
-            QMessageBox.warning(
-                self,
-                "Validation Error",
-                "Please make sure all required fields are filled correctly.",
-            )
             return
         if self.current_page < len(self.pages) - 1:
             self.current_page += 1
             self.stacked_widget.setCurrentIndex(self.current_page)
             self.step_indicator.set_current_step(self.current_page)
             self.update_buttons()
-            if self.current_page == 8:
+            if self.current_page == 9:
                 self.update_summary()
 
     def validate_current_page(self):
@@ -1477,18 +1632,24 @@ class ObsidianOSInstaller(QMainWindow):
             selected_disk = disk_page.get_selected_disk()
             if not selected_disk or selected_disk == "ERROR":
                 return False
+        if self.current_page == 8:
+            user_page = self.pages[8]
+            valid, msg = user_page.validate()
+            if not valid:
+                QMessageBox.warning(self, "Validation Error", msg)
+                return False
         return True
 
     def update_buttons(self):
-        self.back_button.setEnabled(self.current_page > 0 and self.current_page < 9)
-        if self.current_page == 8:
+        self.back_button.setEnabled(self.current_page > 0 and self.current_page < 10)
+        if self.current_page == 9:
             self.next_button.hide()
             self.install_button.show()
-        elif self.current_page == 9:
+        elif self.current_page == 10:
             self.next_button.hide()
             self.install_button.hide()
             self.back_button.setEnabled(False)
-        elif self.current_page >= 10:
+        elif self.current_page >= 11:
             self.next_button.show()
             self.next_button.setText("Finish")
             self.next_button.setIcon(QIcon.fromTheme("application-exit"))
@@ -1513,7 +1674,8 @@ class ObsidianOSInstaller(QMainWindow):
         locale_page = self.pages[5]
         tz_page = self.pages[6]
         kb_page = self.pages[7]
-        summary_page = self.pages[8]
+        user_page = self.pages[8]
+        summary_page = self.pages[9]
         summary_page.update_summary(
             disk_page.get_selected_disk(),
             boot_page.get_selected_option(),
@@ -1522,10 +1684,12 @@ class ObsidianOSInstaller(QMainWindow):
             locale_page.get_selected_locale(),
             tz_page.get_selected_timezone(),
             kb_page.get_selected_keyboard(),
+            user_page.get_fullname(),
+            user_page.get_username(),
         )
 
     def start_installation(self):
-        self.current_page = 9
+        self.current_page = 10
         self.stacked_widget.setCurrentIndex(self.current_page)
         self.step_indicator.set_current_step(self.current_page)
         self.update_buttons()
@@ -1537,7 +1701,8 @@ class ObsidianOSInstaller(QMainWindow):
         locale_page = self.pages[5]
         tz_page = self.pages[6]
         kb_page = self.pages[7]
-        installation_page = self.pages[9]
+        user_page = self.pages[8]
+        installation_page = self.pages[10]
         installation_page.install_worker = None
         installation_page.installation_complete_callback = self.installation_finished
         installation_page.start_installation(
@@ -1549,15 +1714,19 @@ class ObsidianOSInstaller(QMainWindow):
             locale_page.get_selected_locale(),
             tz_page.get_selected_timezone(),
             kb_page.get_selected_keyboard(),
+            user_page.get_fullname(),
+            user_page.get_username(),
+            user_page.get_password(),
+            user_page.get_root_password(),
         )
 
     def installation_finished(self, success, message):
         if success:
-            self.current_page = 10
+            self.current_page = 11
             self.stacked_widget.setCurrentIndex(self.current_page)
             self.step_indicator.set_current_step(self.current_page)
             self.update_buttons()
-            finished_page = self.pages[10]
+            finished_page = self.pages[11]
             finished_page.restart_button.clicked.connect(self.restart_system)
             finished_page.show_log_button.clicked.connect(self.show_log)
         else:
@@ -1580,7 +1749,7 @@ class ObsidianOSInstaller(QMainWindow):
                 self.close()
 
     def show_log(self):
-        log_text = self.pages[9].log_text.toPlainText()
+        log_text = self.pages[10].log_text.toPlainText()
         dialog = QDialog(self)
         dialog.setWindowTitle("Installation Log")
         dialog.resize(700, 500)
