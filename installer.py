@@ -627,7 +627,7 @@ class AdvancedOptionsPage(QWidget):
 
         self.rootfs_size = QSpinBox()
         self.rootfs_size.setRange(1, 9999)
-        self.rootfs_size.setValue(6)
+        self.rootfs_size.setValue(10)
         self.rootfs_size.setSuffix(" GB")
         self.rootfs_size.setObjectName("modern-spinbox")
         grid.addWidget(QLabel("Root Filesystem (A/B):"), 0, 0)
@@ -643,7 +643,7 @@ class AdvancedOptionsPage(QWidget):
 
         self.etc_ab_size = QSpinBox()
         self.etc_ab_size.setRange(1, 9999)
-        self.etc_ab_size.setValue(5)
+        self.etc_ab_size.setValue(1)
         self.etc_ab_size.setSuffix(" GB")
         self.etc_ab_size.setObjectName("modern-spinbox")
         grid.addWidget(QLabel("etc_ab Partition (A/B):"), 2, 0)
