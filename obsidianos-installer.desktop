@@ -2,7 +2,7 @@
 [Desktop Entry]
 Type=Application
 Name=Install ObsidianOS
-Exec=/usr/bin/installer.py
+Exec=/usr/bin/ObsidianOSInstaller
 Icon=/usr/share/icons/obsidianos-installer.svg
 Terminal=false
 Categories=System;Utility;
