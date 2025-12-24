@@ -1,6 +1,8 @@
 # ObsidianOS Installer
 
-This repository contains the graphical installer for ObsidianOS, an A/B GNU/Linux distribution based on Arch. This installer is built using PySide6 and provides a user-friendly interface to guide you through the installation process. Comes with [ObsidianOS KDE](https://github.com/Obsidian-OS/archiso-plasma) and [ObsidianOS COSMIC](https://github.com/Obsidian-OS/archiso-cosmic).
+*Note: This installer has been rewritten in C++ since the commit @461400dea457886cf1715d65b5838dd77b725183*
+
+This repository contains the graphical installer for ObsidianOS, an A/B GNU/Linux distribution based on Arch. This installer is built using Qt and C++ and provides a user-friendly interface to guide you through the installation process. Comes with [ObsidianOS KDE](https://github.com/Obsidian-OS/archiso-plasma) and [ObsidianOS COSMIC](https://github.com/Obsidian-OS/archiso-cosmic).
 
 ## Screenshots
 *Note: These colors and icons come from the KDE theme I'm using, doesn't represent how it looks in the ISO image*
@@ -32,18 +34,17 @@ This repository contains the graphical installer for ObsidianOS, an A/B GNU/Linu
 
 ## Requirements
 
-*   Python 3
-*   PySide6 library (`pacman -S pyside6`)
+*   Qt6
 *   `obsidianctl` command-line tool (This tool is crucial for the actual installation process and is expected to be available in the environment where the installer is run.)
 *   `lsblk` command (for disk detection)
 *   `sudo` privileges for installation.
 
 ## Usage
 
-To run the installer, execute the `installer.py` script:
+To build and the installer, execute this script:
 
 ```bash
-python3 installer.py
+make run
 ```
 
 Follow the on-screen instructions to complete the installation of ObsidianOS.
@@ -52,7 +53,7 @@ Follow the on-screen instructions to complete the installation of ObsidianOS.
 
 ## Development
 
-The installer is written in Python and uses the PySide6 framework for its graphical user interface.
+The installer is written in C++ and uses the Qt framework for its graphical user interface.
 
 ## Test Mode
 There's also the **Test Mode** which you can simulate installation, without touch any of your drives. Kinda like dry-run..

@@ -1,5 +1,9 @@
 DIST ?= /
 all: clean build
+run:
+	build/ObsidianOSInstaller
+test:
+	build/ObsidianOSInstaller --test
 clean:
 	rm -rf build
 
