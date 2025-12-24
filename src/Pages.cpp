@@ -234,13 +234,11 @@ AdvancedOptionsPage::AdvancedOptionsPage(QWidget *parent)
     desc->setWordWrap(true);
     ModernCard *card = new ModernCard();
     QVBoxLayout *cardLayout = new QVBoxLayout(card);
-    cardLayout->setSpacing(20);
-    cardLayout->setContentsMargins(24, 24, 24, 24);
+    cardLayout->setContentsMargins(20, 20, 20, 20);
     QLabel *partitionLabel = new QLabel("Partition Configuration");
     partitionLabel->setObjectName("section-title");
     cardLayout->addWidget(partitionLabel);
     QGridLayout *grid = new QGridLayout();
-    grid->setSpacing(16);
     grid->setColumnStretch(1, 1);
     m_rootfsSize = new QSpinBox();
     m_rootfsSize->setRange(1, 9999);
@@ -333,7 +331,7 @@ SystemImagePage::SystemImagePage(QWidget *parent)
     m_imageList = new QListWidget();
     m_imageList->setObjectName("selection-list");
     connect(m_imageList, &QListWidget::itemClicked, this, &SystemImagePage::onImageSelected);
-    m_imageList->setMinimumHeight(200);
+    m_imageList->setMinimumHeight(300);
     cardLayout->addWidget(m_imageList);
     layout->addWidget(header);
     layout->addWidget(desc);
@@ -415,7 +413,7 @@ LocalePage::LocalePage(QWidget *parent)
     m_localeList = new QListWidget();
     m_localeList->setObjectName("selection-list");
     connect(m_localeList, &QListWidget::itemClicked, this, &LocalePage::onLocaleSelected);
-    m_localeList->setMinimumHeight(200);
+    m_localeList->setMinimumHeight(300);
     QProcess process;
     process.start("ls", {"/usr/share/locale"});
     process.waitForFinished();
@@ -487,7 +485,7 @@ TimezonePage::TimezonePage(QWidget *parent)
     m_tzList = new QListWidget();
     m_tzList->setObjectName("selection-list");
     connect(m_tzList, &QListWidget::itemClicked, this, &TimezonePage::onTzSelected);
-    m_tzList->setMinimumHeight(200);
+    m_tzList->setMinimumHeight(300);
     QProcess process;
     process.start("timedatectl", {"list-timezones"});
     process.waitForFinished();
@@ -683,7 +681,7 @@ KeyboardPage::KeyboardPage(QWidget *parent)
     m_kbList = new QListWidget();
     m_kbList->setObjectName("selection-list");
     connect(m_kbList, &QListWidget::itemClicked, this, &KeyboardPage::onKbSelected);
-    m_kbList->setMinimumHeight(200);
+    m_kbList->setMinimumHeight(300);
     QProcess process;
     process.start("localectl", {"list-keymaps"});
     process.waitForFinished();

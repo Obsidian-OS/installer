@@ -18,9 +18,8 @@ ObsidianOSInstaller::ObsidianOSInstaller(QWidget *parent)
 void ObsidianOSInstaller::initUI()
 {
     setWindowTitle("ObsidianOS Installer");
-    setMinimumSize(900, 900);
-    resize(900, 900);
-    
+    setMinimumSize(800, 700);
+    resize(800, 700);
     QPixmap appIcon(":/logo.svg");
     if (appIcon.isNull()) {
         appIcon = QPixmap("/usr/share/pixmaps/obsidianos.png");
@@ -36,8 +35,8 @@ void ObsidianOSInstaller::initUI()
     mainLayout->setSpacing(0);
 
     QStringList steps = {
-        "Welcome", "Disk", "Type", "Options", "Image", 
-        "Locale", "Time", "Keyboard", "User", "Summary", 
+        "Welcome", "Disk", "Type", "Options", "Image",
+        "Locale", "Time", "Keyboard", "User", "Summary",
         "Install", "Done"
     };
     m_stepIndicator = new StepIndicator(steps);
@@ -77,10 +76,8 @@ void ObsidianOSInstaller::initUI()
     buttonLayout->addStretch();
     buttonLayout->addWidget(m_installButton);
     buttonLayout->addWidget(m_nextButton);
-
     contentLayout->addWidget(m_stackedWidget, 1);
     contentLayout->addWidget(buttonBar);
-
     mainLayout->addWidget(m_stepIndicator);
     mainLayout->addWidget(contentWidget, 1);
 }
@@ -101,7 +98,7 @@ void ObsidianOSInstaller::setupPages()
         new InstallationPage(),
         new FinishedPage()
     };
-    
+
     for (QWidget *page : m_pages) {
         m_stackedWidget->addWidget(page);
     }
@@ -170,7 +167,7 @@ void ObsidianOSInstaller::validateCurrentPage()
 void ObsidianOSInstaller::updateButtons()
 {
     m_backButton->setEnabled(m_currentPage > 0 && m_currentPage < 10);
-    
+
     if (m_currentPage == 9) {
         m_nextButton->hide();
         m_installButton->show();
@@ -205,7 +202,7 @@ void ObsidianOSInstaller::updateSummary()
     KeyboardPage *kbPage = qobject_cast<KeyboardPage*>(m_pages[7]);
     UserPage *userPage = qobject_cast<UserPage*>(m_pages[8]);
     SummaryPage *summaryPage = qobject_cast<SummaryPage*>(m_pages[9]);
-    
+
     summaryPage->updateSummary(
         diskPage->getSelectedDisk(),
         bootPage->getSelectedOption(),
@@ -225,10 +222,10 @@ void ObsidianOSInstaller::startInstallation()
     m_stackedWidget->setCurrentIndex(m_currentPage);
     m_stepIndicator->setCurrentStep(m_currentPage);
     updateButtons();
-    
+
     DualBootPage *bootPage = qobject_cast<DualBootPage*>(m_pages[2]);
     bool dualBootStatus = bootPage->getSelectedOption() == "alongside";
-    
+
     DiskSelectionPage *diskPage = qobject_cast<DiskSelectionPage*>(m_pages[1]);
     AdvancedOptionsPage *advancedPage = qobject_cast<AdvancedOptionsPage*>(m_pages[3]);
     SystemImagePage *imagePage = qobject_cast<SystemImagePage*>(m_pages[4]);
@@ -237,9 +234,9 @@ void ObsidianOSInstaller::startInstallation()
     KeyboardPage *kbPage = qobject_cast<KeyboardPage*>(m_pages[7]);
     UserPage *userPage = qobject_cast<UserPage*>(m_pages[8]);
     InstallationPage *installationPage = qobject_cast<InstallationPage*>(m_pages[10]);
-    
+
     connect(installationPage, &InstallationPage::installationComplete, this, &ObsidianOSInstaller::installationFinished);
-    
+
     installationPage->startInstallation(
         diskPage->getSelectedDisk(),
         imagePage->getSelectedImage(),
@@ -263,7 +260,7 @@ void ObsidianOSInstaller::installationFinished(bool success, const QString &mess
         m_stackedWidget->setCurrentIndex(m_currentPage);
         m_stepIndicator->setCurrentStep(m_currentPage);
         updateButtons();
-        
+
         FinishedPage *finishedPage = qobject_cast<FinishedPage*>(m_pages[11]);
         connect(finishedPage, &FinishedPage::restartSystem, this, &ObsidianOSInstaller::restartSystem);
         connect(finishedPage, &FinishedPage::showLog, this, &ObsidianOSInstaller::showLog);
@@ -288,23 +285,23 @@ void ObsidianOSInstaller::showLog()
 {
     InstallationPage *installationPage = qobject_cast<InstallationPage*>(m_pages[10]);
     QString logText = installationPage->findChild<QTextEdit*>("log-output")->toPlainText();
-    
+
     QDialog *dialog = new QDialog(this);
     dialog->setWindowTitle("Installation Log");
     dialog->resize(700, 500);
     QVBoxLayout *layout = new QVBoxLayout(dialog);
     layout->setContentsMargins(16, 16, 16, 16);
-    
+
     QTextEdit *textEdit = new QTextEdit();
     textEdit->setPlainText(logText);
     textEdit->setReadOnly(true);
     textEdit->setFont(QFont("Monospace", 9));
     layout->addWidget(textEdit);
-    
+
     QPushButton *closeButton = new QPushButton("Close");
     connect(closeButton, &QPushButton::clicked, dialog, &QDialog::accept);
     layout->addWidget(closeButton);
-    
+
     dialog->exec();
 }
 

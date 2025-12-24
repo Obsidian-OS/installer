@@ -77,7 +77,6 @@ int main(int argc, char *argv[])
 
     QLabel#summary-value {
         color: palette(text);
-        word-wrap: true;
     }
 
     QLabel#question-label {
