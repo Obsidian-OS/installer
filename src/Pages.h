@@ -1,6 +1,5 @@
 #ifndef PAGES_H
 #define PAGES_H
-
 #include <QWidget>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -26,7 +25,7 @@
 #include <QFileInfo>
 #include <QStandardPaths>
 #include <QRegularExpression>
-
+#include "InstallWorker.h"
 class WelcomePage : public QWidget
 {
     Q_OBJECT
@@ -224,6 +223,7 @@ private:
     QString m_selectedUsername;
     QString m_selectedPassword;
     QString m_selectedRootPassword;
+    InstallWorker *m_worker = nullptr;
 };
 
 class FinishedPage : public QWidget

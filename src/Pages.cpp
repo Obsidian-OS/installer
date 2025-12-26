@@ -817,16 +817,17 @@ void SummaryPage::updateSummary(const QString &disk, const QString &bootOption, 
 }
 
 InstallationPage::InstallationPage(QWidget *parent)
-    : QWidget(parent)
-    , m_statusLabel(nullptr)
-    , m_progressBar(nullptr)
-    , m_logText(nullptr)
-    , m_questionLabel(nullptr)
-    , m_yesButton(nullptr)
-    , m_noButton(nullptr)
-    , m_inputField(nullptr)
-    , m_sendButton(nullptr)
-    , m_isYNPromptActive(false)
+: QWidget(parent)
+, m_statusLabel(nullptr)
+, m_progressBar(nullptr)
+, m_logText(nullptr)
+, m_questionLabel(nullptr)
+, m_yesButton(nullptr)
+, m_noButton(nullptr)
+, m_inputField(nullptr)
+, m_sendButton(nullptr)
+, m_isYNPromptActive(false)
+, m_worker(nullptr)
 {
     QVBoxLayout *layout = new QVBoxLayout(this);
     layout->setSpacing(16);
@@ -889,8 +890,31 @@ InstallationPage::InstallationPage(QWidget *parent)
     layout->addWidget(m_progressBar);
     layout->addWidget(card, 1);
     layout->addWidget(inputCard);
-    connect(m_yesButton, &QPushButton::clicked, [this]() { sendYN("y"); });
-    connect(m_noButton, &QPushButton::clicked, [this]() { sendYN("n"); });
+
+    connect(m_yesButton, &QPushButton::clicked, this, [this]() {
+        if (m_worker) {
+            m_worker->respondToChrootPrompt(true);
+        }
+        m_questionLabel->hide();
+        m_yesButton->hide();
+        m_noButton->hide();
+        m_inputField->show();
+        m_sendButton->show();
+        m_isYNPromptActive = false;
+    });
+
+    connect(m_noButton, &QPushButton::clicked, this, [this]() {
+        if (m_worker) {
+            m_worker->respondToChrootPrompt(false);
+        }
+        m_questionLabel->hide();
+        m_yesButton->hide();
+        m_noButton->hide();
+        m_inputField->show();
+        m_sendButton->show();
+        m_isYNPromptActive = false;
+    });
+
     connect(m_inputField, &QLineEdit::returnPressed, this, &InstallationPage::sendInput);
 }
 
@@ -905,19 +929,39 @@ void InstallationPage::startInstallation(const QString &disk, const QString &ima
     m_selectedUsername = username;
     m_selectedPassword = password;
     m_selectedRootPassword = rootPassword;
-    InstallWorker *worker = new InstallWorker(
+
+    if (m_worker) {
+        m_worker->deleteLater();
+        m_worker = nullptr;
+    }
+
+    m_worker = new InstallWorker(
         disk, image,
         partitionConfig["rootfs_size"].toString().replace("G", "").toInt(),
-        partitionConfig["esp_size"].toString().replace("M", "").toInt(),
-        partitionConfig["etc_ab_size"].toString().replace("G", "").toInt(),
-        partitionConfig["var_ab_size"].toString().replace("G", "").toInt(),
-        dualBoot, filesystemType, locale, timezone, keyboard, fullname, username, password, rootPassword
+                                 partitionConfig["esp_size"].toString().replace("M", "").toInt(),
+                                 partitionConfig["etc_ab_size"].toString().replace("G", "").toInt(),
+                                 partitionConfig["var_ab_size"].toString().replace("G", "").toInt(),
+                                 dualBoot, filesystemType, locale, timezone, keyboard, fullname, username, password, rootPassword
     );
 
-    connect(worker, &InstallWorker::progressUpdated, this, &InstallationPage::updateProgress);
-    connect(worker, &InstallWorker::finished, this, &InstallationPage::installationFinished);
-    connect(worker, &InstallWorker::chrootEntered, this, &InstallationPage::onChrootEntered);
-    worker->start();
+    connect(m_worker, &InstallWorker::progressUpdated, this, &InstallationPage::updateProgress);
+    connect(m_worker, &InstallWorker::finished, this, &InstallationPage::installationFinished);
+    connect(m_worker, &InstallWorker::chrootEntered, this, &InstallationPage::onChrootEntered);
+
+    connect(m_worker, &InstallWorker::chrootPromptDetected, this, [this]() {
+        m_questionLabel->show();
+        m_yesButton->show();
+        m_noButton->show();
+        m_inputField->hide();
+        m_sendButton->hide();
+        m_isYNPromptActive = true;
+    });
+
+    connect(m_worker, &InstallWorker::finished, [this]() {
+        m_worker = nullptr;
+    });
+
+    m_worker->start();
 }
 
 void InstallationPage::sendInput()
@@ -925,16 +969,24 @@ void InstallationPage::sendInput()
     if (m_isYNPromptActive) {
         return;
     }
+
     QString text = m_inputField->text().trimmed();
     if (!text.isEmpty()) {
         m_logText->append(QString(">>> %1").arg(text));
         m_inputField->clear();
+
+        if (m_worker) {
+            m_worker->sendInput(text);
+        }
     }
 }
 
 void InstallationPage::sendYN(const QString &choice)
 {
     m_logText->append(QString(">>> %1").arg(choice));
+    if (m_worker) {
+        m_worker->sendInput(choice);
+    }
     m_questionLabel->hide();
     m_yesButton->hide();
     m_noButton->hide();
