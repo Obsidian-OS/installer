@@ -104,12 +104,14 @@ void InstallWorker::run()
             "echo 'Installation complete'; exit 0";
             emit progressUpdated("Starting installation...");
         } else {
-            cmd = QStringList() << "sudo" << "-S" << "obsidianctl" << "install" << m_disk << m_image
-            << "--rootfs-size" << QString::number(m_rootfsSize)
-            << "--esp-size" << QString::number(m_espSize)
-            << "--etc-size" << QString::number(m_etcSize)
-            << "--var-size" << QString::number(m_varSize);
-
+            cmd = QStringList()
+                << "sudo" << "-S"
+                << "obsidianctl" << "install"
+                << m_disk << m_image
+                << "--rootfs-size" << QString("%1G").arg(m_rootfsSize)
+                << "--esp-size"    << QString("%1M").arg(m_espSize)
+                << "--etc-size"    << QString("%1G").arg(m_etcSize)
+                << "--var-size"    << QString("%1G").arg(m_varSize);
             if (m_dualBoot) {
                 cmd << "--dual-boot";
             }
