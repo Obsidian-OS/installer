@@ -13,7 +13,7 @@
 #include <errno.h>
 #include <poll.h>
 
-InstallWorker::InstallWorker(const QString &disk, const QString &image, int rootfsSize, int espSize, int etcSize, int varSize, bool dualBoot, const QString &filesystemType, const QString &locale, const QString &timezone, const QString &keyboard, const QString &fullname, const QString &username, const QString &password, const QString &rootPassword, QObject *parent)
+InstallWorker::InstallWorker(const QString &disk, const QString &image, int rootfsSize, int espSize, int etcSize, int varSize, bool dualBoot, const QString &filesystemType, bool secureBootEnabled, const QString &locale, const QString &timezone, const QString &keyboard, const QString &fullname, const QString &username, const QString &password, const QString &rootPassword, QObject *parent)
 : QThread(parent)
 , m_disk(disk)
 , m_image(image)
@@ -23,6 +23,7 @@ InstallWorker::InstallWorker(const QString &disk, const QString &image, int root
 , m_varSize(varSize)
 , m_dualBoot(dualBoot)
 , m_filesystemType(filesystemType)
+, m_secureBootEnabled(secureBootEnabled)
 , m_locale(locale)
 , m_timezone(timezone)
 , m_keyboard(keyboard)
@@ -364,6 +365,14 @@ void InstallWorker::sendConfigs()
         QString("echo '%1:%2' | chpasswd").arg(m_username, m_password),
         QString("echo 'root:%1' | chpasswd").arg(m_rootPassword)
     };
+
+    if (m_secureBootEnabled) {
+        commands += {
+            QString("sbctl setup || true"),
+            QString("sbctl enroll-keys || true"),
+            QString("sbctl sign-all || true")
+        };
+    }
 
     for (const QString &cmd : commands) {
         sendInput(cmd);

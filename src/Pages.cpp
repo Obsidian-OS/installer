@@ -223,6 +223,7 @@ AdvancedOptionsPage::AdvancedOptionsPage(QWidget *parent)
     , m_etcAbSize(nullptr)
     , m_varAbSize(nullptr)
     , m_filesystemTypeCombo(nullptr)
+    , m_secureBootCheck(nullptr)
 {
     QVBoxLayout *layout = new QVBoxLayout(this);
     layout->setSpacing(20);
@@ -277,6 +278,13 @@ AdvancedOptionsPage::AdvancedOptionsPage(QWidget *parent)
     m_filesystemTypeCombo->addItem("f2fs - Flash-Friendly File System");
     m_filesystemTypeCombo->setObjectName("modern-combo");
     cardLayout->addWidget(m_filesystemTypeCombo);
+    QLabel *bootLabel = new QLabel("Boot Configuration");
+    bootLabel->setObjectName("section-title");
+    cardLayout->addWidget(bootLabel);
+    m_secureBootCheck = new QCheckBox("Enable Secure Boot support");
+    m_secureBootCheck->setObjectName("modern-checkbox");
+    m_secureBootCheck->setChecked(false);
+    cardLayout->addWidget(m_secureBootCheck);
     QWidget *infoWidget = new QWidget();
     infoWidget->setObjectName("info-box");
     QHBoxLayout *infoLayout = new QHBoxLayout(infoWidget);
@@ -309,6 +317,11 @@ QVariantMap AdvancedOptionsPage::getPartitionConfig() const
 QString AdvancedOptionsPage::getFilesystemType() const
 {
     return m_filesystemTypeCombo->currentText().contains("f2fs") ? "f2fs" : "ext4";
+}
+
+bool AdvancedOptionsPage::getSecureBootEnabled() const
+{
+    return m_secureBootCheck->isChecked();
 }
 
 SystemImagePage::SystemImagePage(QWidget *parent)
@@ -918,7 +931,7 @@ InstallationPage::InstallationPage(QWidget *parent)
     connect(m_inputField, &QLineEdit::returnPressed, this, &InstallationPage::sendInput);
 }
 
-void InstallationPage::startInstallation(const QString &disk, const QString &image, const QVariantMap &partitionConfig, bool dualBoot, const QString &filesystemType, const QString &locale, const QString &timezone, const QString &keyboard, const QString &fullname, const QString &username, const QString &password, const QString &rootPassword)
+void InstallationPage::startInstallation(const QString &disk, const QString &image, const QVariantMap &partitionConfig, bool dualBoot, const QString &filesystemType, bool secureBootEnabled, const QString &locale, const QString &timezone, const QString &keyboard, const QString &fullname, const QString &username, const QString &password, const QString &rootPassword)
 {
     m_statusLabel->setText("Starting installation...");
     m_logText->clear();
@@ -941,7 +954,7 @@ void InstallationPage::startInstallation(const QString &disk, const QString &ima
                                  partitionConfig["esp_size"].toString().replace("M", "").toInt(),
                                  partitionConfig["etc_ab_size"].toString().replace("G", "").toInt(),
                                  partitionConfig["var_ab_size"].toString().replace("G", "").toInt(),
-                                 dualBoot, filesystemType, locale, timezone, keyboard, fullname, username, password, rootPassword
+                                 dualBoot, filesystemType, secureBootEnabled, locale, timezone, keyboard, fullname, username, password, rootPassword
     );
 
     connect(m_worker, &InstallWorker::progressUpdated, this, &InstallationPage::updateProgress);

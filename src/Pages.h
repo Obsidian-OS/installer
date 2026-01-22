@@ -11,6 +11,7 @@
 #include <QButtonGroup>
 #include <QSpinBox>
 #include <QComboBox>
+#include <QCheckBox>
 #include <QTextEdit>
 #include <QProgressBar>
 #include <QPushButton>
@@ -73,6 +74,7 @@ public:
     explicit AdvancedOptionsPage(QWidget *parent = nullptr);
     QVariantMap getPartitionConfig() const;
     QString getFilesystemType() const;
+    bool getSecureBootEnabled() const;
 
 private:
     QSpinBox *m_rootfsSize;
@@ -80,6 +82,7 @@ private:
     QSpinBox *m_etcAbSize;
     QSpinBox *m_varAbSize;
     QComboBox *m_filesystemTypeCombo;
+    QCheckBox *m_secureBootCheck;
 };
 
 class SystemImagePage : public QWidget
@@ -193,7 +196,7 @@ class InstallationPage : public QWidget
 
 public:
     explicit InstallationPage(QWidget *parent = nullptr);
-    void startInstallation(const QString &disk, const QString &image, const QVariantMap &partitionConfig, bool dualBoot, const QString &filesystemType, const QString &locale, const QString &timezone, const QString &keyboard, const QString &fullname, const QString &username, const QString &password, const QString &rootPassword);
+    void startInstallation(const QString &disk, const QString &image, const QVariantMap &partitionConfig, bool dualBoot, const QString &filesystemType, bool secureBootEnabled, const QString &locale, const QString &timezone, const QString &keyboard, const QString &fullname, const QString &username, const QString &password, const QString &rootPassword);
 
 signals:
     void installationComplete(bool success, const QString &message);

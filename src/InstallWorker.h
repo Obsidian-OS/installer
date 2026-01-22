@@ -11,7 +11,7 @@ class InstallWorker : public QThread
     Q_OBJECT
 
 public:
-    explicit InstallWorker(const QString &disk, const QString &image, int rootfsSize, int espSize, int etcSize, int varSize, bool dualBoot, const QString &filesystemType, const QString &locale, const QString &timezone, const QString &keyboard, const QString &fullname, const QString &username, const QString &password, const QString &rootPassword, QObject *parent = nullptr);
+    explicit InstallWorker(const QString &disk, const QString &image, int rootfsSize, int espSize, int etcSize, int varSize, bool dualBoot, const QString &filesystemType, bool secureBootEnabled, const QString &locale, const QString &timezone, const QString &keyboard, const QString &fullname, const QString &username, const QString &password, const QString &rootPassword, QObject *parent = nullptr);
     ~InstallWorker();
     void sendInput(const QString &text);
     void sendConfigs();
@@ -38,6 +38,7 @@ private:
     int m_varSize;
     bool m_dualBoot;
     QString m_filesystemType;
+    bool m_secureBootEnabled;
     QString m_locale;
     QString m_timezone;
     QString m_keyboard;

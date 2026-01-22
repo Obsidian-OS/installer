@@ -243,6 +243,7 @@ void ObsidianOSInstaller::startInstallation()
         advancedPage->getPartitionConfig(),
         dualBootStatus,
         advancedPage->getFilesystemType(),
+        advancedPage->getSecureBootEnabled(),
         localePage->getSelectedLocale(),
         tzPage->getSelectedTimezone(),
         kbPage->getSelectedKeyboard(),
