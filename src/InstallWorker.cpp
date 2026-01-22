@@ -116,6 +116,9 @@ void InstallWorker::run()
             if (m_dualBoot) {
                 cmd << "--dual-boot";
             }
+            if (m_secureBootEnabled) {
+                cmd << "--secure-boot";
+            }
             if (m_filesystemType == "f2fs") {
                 cmd << "--use-f2fs";
             }
@@ -365,13 +368,6 @@ void InstallWorker::sendConfigs()
         QString("echo '%1:%2' | chpasswd").arg(m_username, m_password),
         QString("echo 'root:%1' | chpasswd").arg(m_rootPassword)
     };
-
-    if (m_secureBootEnabled) {
-        commands += {
-            QString("sbctl create-keys || true"),
-            QString("sbctl sign-all || true")
-        };
-    }
 
     for (const QString &cmd : commands) {
         sendInput(cmd);
