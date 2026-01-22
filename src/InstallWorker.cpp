@@ -368,8 +368,7 @@ void InstallWorker::sendConfigs()
 
     if (m_secureBootEnabled) {
         commands += {
-            QString("sbctl setup || true"),
-            QString("sbctl enroll-keys || true"),
+            QString("sbctl create-keys || true"),
             QString("sbctl sign-all || true")
         };
     }
